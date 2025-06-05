@@ -1,0 +1,10 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: net-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    #- 10.84.3.100/32 #意为地址池中只有10.84.3.100
+    - 10.84.3.100-10.84.3.100 #也是表示地址池中只有10.84.3.100
+  avoidBuggyIPs: true #是一个安全机制，用于避免分配某些可能被老旧或有缺陷的网络设备错误处理的 IP 地址。

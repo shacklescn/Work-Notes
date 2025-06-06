@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: filebrowser
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 31921
+  selector:
+    app: filebrowser
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: filebrowser-db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd-sc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filebrowser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: filebrowser
+  template:
+    metadata:
+      labels:
+        app: filebrowser
+    spec:
+      containers:
+        - name: filebrowser
+          image: registry.cn-hangzhou.aliyuncs.com/bohai_repo/filebrowser:s6
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: filebrowser-db
+              mountPath: /database
+            - name: adsec-volumes
+              mountPath: /data/adsec
+            - name: adml-volumes
+              mountPath: /data/adml
+            - name: config
+              mountPath: /config/settings.json
+              subPath: settings.json
+          env:
+            - name: PUID
+              value: "0"
+            - name: PGID
+              value: "0"
+      volumes:
+        - name: filebrowser-db
+          persistentVolumeClaim:
+            claimName: filebrowser-db
+        - name: adsec-volumes
+          persistentVolumeClaim:
+            claimName: adsec-shared
+        - name: adml-volumes
+          persistentVolumeClaim:
+            claimName: adml-shared
+        - name: config
+          configMap:
+            name: filebrowser-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebrowser-config
+data:
+  settings.json: |
+    {
+      "port": 80,
+      "baseURL": "",
+      "address": "",
+      "log": "stdout",
+      "database": "/database/filebrowser.db",
+      "root": "/data"
+    }
+---

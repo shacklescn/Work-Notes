@@ -1,4 +1,47 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_数字底座-生产环境",
+      "label": "数字底座-生产环境",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.3.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -21,11 +64,11 @@
       }
     ]
   },
-  "description": "Etcd Cluster Overview showing details scraped from the etcd Prometheus metrics endpoint.",
+  "description": "Etcd 集群概览显示从 etcd Prometheus 指标端点抓取的详细信息。",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 22,
+  "id": null,
   "links": [
     {
       "asDropdown": true,
@@ -59,7 +102,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -138,7 +181,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "max(etcd_server_has_leader{instance=~\"$instance\",job=~\"$job\"})",
@@ -155,7 +198,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -235,7 +278,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "sum(etcd_server_id{instance=~\"$instance\",job=~\"$job\"})",
@@ -252,7 +295,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "",
       "fieldConfig": {
@@ -663,7 +706,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": false,
           "expr": "(etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\",job=~\"$job\"} / etcd_server_quota_backend_bytes{instance=~\"$instance\",job=~\"$job\"})*100",
@@ -677,7 +720,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": false,
           "expr": "process_resident_memory_bytes{instance=~\"$instance\",job=~\"$job\"}",
@@ -691,7 +734,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": false,
           "expr": "sum(etcd_debugging_mvcc_keys_total{instance=~\"$instance\",job=~\"$job\"}) by (instance)",
@@ -705,7 +748,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{instance=~\"$instance\",job=~\"$job\"}[5m])) by (instance, le))",
@@ -719,7 +762,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{instance=~\"$instance\",job=~\"$job\"}[5m])) by (instance, le))",
@@ -733,7 +776,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "sum(etcd_server_is_leader{instance=~\"$instance\",job=~\"$job\"}) by (instance)",
@@ -747,7 +790,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": false,
           "expr": "sum(etcd_debugging_mvcc_db_compaction_keys_total{instance=~\"$instance\",job=~\"$job\"}) by (instance)",
@@ -761,7 +804,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "(etcd_mvcc_db_total_size_in_bytes{instance=~\"$instance\",job=~\"$job\"} / etcd_server_quota_backend_bytes{instance=~\"$instance\",job=~\"$job\"})*100",
@@ -775,7 +818,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -790,7 +833,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -864,7 +907,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "",
       "fieldConfig": {
@@ -945,7 +988,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "exemplar": true,
           "expr": "max(etcd_server_leader_changes_seen_total{instance=~\"$instance\",job=~\"$job\"})",
@@ -974,7 +1017,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "",
       "fieldConfig": {
@@ -1027,7 +1070,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1044,7 +1087,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1132,7 +1175,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1153,7 +1196,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1241,7 +1284,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1262,7 +1305,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1350,7 +1393,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1372,7 +1415,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1460,7 +1503,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1494,7 +1537,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1582,7 +1625,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1601,7 +1644,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "",
       "fieldConfig": {
@@ -1690,7 +1733,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "rate(etcd_mvcc_put_total{instance=~\"$instance\",job=~\"$job\"}[$interval])",
@@ -1703,7 +1746,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "rate(etcd_debugging_mvcc_delete_total{instance=~\"$instance\",job=~\"$job\"}[$interval])",
@@ -1720,7 +1763,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "Compaction 是 etcd 用于清理旧版本 key 的机制，以释放存储空间。",
       "fieldConfig": {
@@ -1805,7 +1848,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1837,7 +1880,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "目标进程当前占用的 常驻内存大小（RSS，Resident Set Size），单位为 字节（bytes）\n\nRSS 指进程在物理内存中实际使用的部分，不包括 swap 和共享库未加载部分。",
       "fieldConfig": {
@@ -1883,8 +1926,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1926,7 +1968,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1947,7 +1989,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "总空间大小：包括空洞和未清理的数据\n已用空间大小：排除了空洞和未清理的数据，实际有数据的大小\n",
       "fieldConfig": {
@@ -1993,8 +2035,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2036,7 +2077,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2054,7 +2095,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2073,7 +2114,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2119,8 +2160,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2162,7 +2202,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2178,7 +2218,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2198,7 +2238,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "WAL 同步操作耗时的高延迟分位值，代表大部分写操作中“最慢的1%”的耗时。\n\n体现了 WAL fsync 在磁盘上的性能表现，越低越好，越高说明磁盘同步可能存在瓶颈。\n\n“提交事务到磁盘的总延迟”是指 etcd 把事务写入并持久化到底层存储过程中的耗时。\n\n耗时包括了 etcd 后端完成一次事务写入操作（commit）的整个磁盘延迟。\n不是所有操作的平均耗时，而是 99% 的操作耗时都不会超过这个值，体现的是 尾部延迟（tail latency）。",
       "fieldConfig": {
@@ -2244,8 +2284,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2285,7 +2324,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2302,7 +2341,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2322,7 +2361,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2367,8 +2406,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2410,7 +2448,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "etcd_server_heartbeat_send_failures_total{instance=~\"$instance\",job=~\"$job\"}",
@@ -2423,7 +2461,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "etcd_server_health_failures{instance=~\"$instance\",job=~\"$job\"}",
@@ -2440,7 +2478,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2485,8 +2523,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2526,7 +2563,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2541,7 +2578,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2560,7 +2597,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2605,8 +2642,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2648,7 +2684,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2667,7 +2703,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "快照持续时间（snapshot_save_total_duration_seconds）异常长表明磁盘存在问题，并可能导致集群不稳定。",
       "fieldConfig": {
@@ -2713,8 +2749,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2752,7 +2787,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2772,7 +2807,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2817,8 +2852,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2860,7 +2894,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(rate(etcd_server_proposals_failed_total{instance=~\"$instance\",job=~\"$job\"}[$interval]))",
@@ -2875,7 +2909,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(etcd_server_proposals_pending{instance=~\"$instance\",job=~\"$job\"})",
@@ -2890,11 +2924,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(rate(etcd_server_proposals_committed_total{instance=~\"$instance\",job=~\"$job\"}[$interval]))",
           "format": "time_series",
+          "hide": false,
           "intervalFactor": 2,
           "legendFormat": "提议提交速率",
           "metric": "etcd_server_proposals_committed_total",
@@ -2905,7 +2940,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(rate(etcd_server_proposals_applied_total{instance=~\"$instance\",job=~\"$job\"}[$interval]))",
@@ -2923,7 +2958,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2968,8 +3003,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3011,7 +3045,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",instance=~\"$instance\",job=~\"$job\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",instance=~\"$instance\",job=~\"$job\"})",
@@ -3026,7 +3060,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(grpc_server_started_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",instance=~\"$instance\",job=~\"$job\"}) - sum(grpc_server_handled_total{grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\",instance=~\"$instance\",job=~\"$job\"})",
@@ -3045,7 +3079,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "etcd 后端存储数据库压缩过程中，被压缩的键的速率。\n压缩（compaction）是 etcd 用来清理旧版本数据、减少存储空间和提高查询效率的关键操作。\n\n速率越高，说明压缩活动越频繁或者压缩的范围越大。",
       "fieldConfig": {
@@ -3091,8 +3125,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3134,7 +3167,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3153,7 +3186,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3198,8 +3231,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3241,7 +3273,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3262,7 +3294,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "表示有多少提案正在排队等待提交。待提交提案数量增加表明客户端负载过高或成员无法提交提案。",
       "fieldConfig": {
@@ -3308,8 +3340,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3351,7 +3382,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3371,7 +3402,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "description": "proposals_committed_total 记录已提交的共识提案总数。若集群健康，该指标应随时间持续增长。健康的 etcd 集群中，多个成员可能暂时存在提案总数差异，原因包括：启动后从节点恢复数据、落后于领导者节点，或是领导者节点（因此拥有最多提交数）。需监控集群所有成员的该指标——若单个成员与领导者持续存在较大滞后，表明该成员运行缓慢或异常。\n\nproposals_applied_total 记录已应用的共识提案总数。etcd 服务器会异步应用每个已提交提案。正常情况下，proposals_committed_total 与 proposals_applied_total 的差值应保持较小范围（高负载下通常不超过数千）。若两者差值持续增大，表明 etcd 服务器过载，可能因执行繁重的范围查询或大型事务操作等昂贵查询所致。",
       "fieldConfig": {
@@ -3417,8 +3448,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3460,7 +3490,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3477,7 +3507,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3498,7 +3528,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3585,7 +3615,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\",instance=~\"$instance\",job=~\"$job\"}[$interval]))",
@@ -3600,7 +3630,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "expr": "sum(rate(grpc_server_handled_total{grpc_type=\"unary\",grpc_code!=\"OK\",instance=~\"$instance\",job=~\"$job\"}[$interval]))",
@@ -3619,7 +3649,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ce98y7u1lsqv4f"
+        "uid": "${DS_数字底座-生产环境}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3706,7 +3736,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3722,7 +3752,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ce98y7u1lsqv4f"
+            "uid": "${DS_数字底座-生产环境}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -3740,7 +3770,6 @@
       "type": "timeseries"
     }
   ],
-  "preload": false,
   "refresh": "1m",
   "schemaVersion": 40,
   "tags": [
@@ -3750,10 +3779,7 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "text": "数字底座-生产环境",
-          "value": "ce98y7u1lsqv4f"
-        },
+        "current": {},
         "includeAll": false,
         "label": "Data Source",
         "name": "datasource",
@@ -3764,13 +3790,10 @@
         "type": "datasource"
       },
       {
-        "current": {
-          "text": "etcd",
-          "value": "etcd"
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "ce98y7u1lsqv4f"
+          "uid": "${DS_数字底座-生产环境}"
         },
         "definition": "label_values(etcd_cluster_version,job)",
         "includeAll": false,
@@ -3787,17 +3810,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "ce98y7u1lsqv4f"
+          "uid": "${DS_数字底座-生产环境}"
         },
         "definition": "label_values({job=\"$job\"}, instance)",
         "includeAll": true,
@@ -3878,7 +3894,7 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {
@@ -3893,8 +3909,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "Etcd Cluster",
+  "title": "Etcd Cluster CN",
   "uid": "etcd_cluster",
-  "version": 67,
+  "version": 72,
   "weekStart": ""
 }

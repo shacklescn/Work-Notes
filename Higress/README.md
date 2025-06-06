@@ -47,7 +47,7 @@ kubectl apply -f - -n kube-system
 ```
 ## 3. 进入项目目录
 ```shell
-cd Higress
+cd Work-Notes/Higress
 ```
 
 ## 4. 安装MetalLB

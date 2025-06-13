@@ -1,0 +1,49 @@
+services:
+  kafka:
+    image: bitnami/kafka:4.0.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./kafka_data:/bitnami/kafka
+    environment:
+      # 启用 KRaft 模式（Kafka Raft Metadata Mode），不再使用 ZooKeeper，Kafka 自主管理元数据。
+      - KAFKA_KRAFT_MODE=true
+      # 当前 Kafka 节点的 唯一标识符，必须是整数。所有节点的 node.id 需唯一。
+      - KAFKA_CFG_NODE_ID=1
+      #  指定当前节点的角色：broker：处理生产者/消费者请求；controller：负责 Kafka 元数据管理（等价于 ZooKeeper 的功能）。
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      # 指定 KRaft controller 节点组成的仲裁（quorum）列表。
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      # 定义 Kafka 服务监听的网络地址和端口：SASL_PLAINTEXT://:9092：供客户端连接使用，启用 SASL 认证；CONTROLLER://:9093：KRaft controller 用于节点间通信。
+      - KAFKA_CFG_LISTENERS=SASL_PLAINTEXT://:9092,CONTROLLER://:9093
+      # "kafka" 是服务在网络中的 DNS 名；9092 是端口；此地址必须为客户端可解析/可连通的主机名或 IP，否则会连接失败。
+      - KAFKA_CFG_ADVERTISED_LISTENERS=SASL_PLAINTEXT://kafka:9092
+      # 定义不同监听器使用的安全协议：SASL_PLAINTEXT：使用 SASL + 明文通信；CONTROLLER：不使用认证，仅明文（PLAINTEXT）。
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
+      # 指定 Kafka broker 之间通信时使用哪个监听器，这里是 SASL_PLAINTEXT（即 9092），也要求 broker 间认证。
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=SASL_PLAINTEXT
+      # 指定 controller 使用哪个 listener 名称。必须在 LISTENERS 中有定义。
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # 启用的 SASL 认证机制，这里仅使用 PLAIN（用户名/密码形式的认证方式）。
+      - KAFKA_CFG_SASL_ENABLED_MECHANISMS=PLAIN
+      # 指定 broker 间通信使用的认证方式：PLAIN。
+      - KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN
+      # 允许启用明文通信监听器（用于 PLAINTEXT 或 SASL_PLAINTEXT 形式）。Bitnami 镜像默认是禁用的，需显式允许。
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      # 定义允许连接 Kafka 的 SASL 用户名，这里是 admin。
+      - KAFKA_CLIENT_USERS=admin
+      # 与上面 KAFKA_CLIENT_USERS 一一对应，设置密码为 admin123
+      - KAFKA_CLIENT_PASSWORDS=admin123
+
+# 优化部分
+      # 创建 Topic 时的默认分区数量
+      - KAFKA_CFG_NUM_PARTITIONS=30
+      # 日志保留时间（单位：小时）
+      - KAFKA_CFG_LOG_RETENTION_HOURS=168
+      # 每个日志段的最大大小（字节）1GB
+      - KAFKA_CFG_SEGMENT_BYTES=1073741824
+      # 日志保留检查周期（单位：毫秒）
+      - KAFKA_CFG_LOG_RETENTION_CHECK_INTERVAL_MS=300000
+      # 单条消息最大字节数（5MB）
+      - KAFKA_CFG_MESSAGE_MAX_BYTES=5000000

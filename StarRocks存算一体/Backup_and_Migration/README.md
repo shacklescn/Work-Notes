@@ -1,4 +1,4 @@
-# StarRocks 存算一体架构的备份与恢复
+# StarRocks 存算一体架构快照式备份与恢复
 官方地址：https://docs.starrocks.io/zh/docs/3.4/administration/management/Backup_and_restore/#%E5%88%9B%E5%BB%BA%E4%BB%93%E5%BA%93
 
 StarRocks 支持将数据以快照文件的形式备份到远端存储系统中，或将备份的数据从远端存储系统恢复至任意 StarRocks 集群。通过这个功能，您可以定期为 StarRocks 集群中的数据进行快照备份，或者将数据在不同 StarRocks 集群间迁移。 从 v3.4.0 开始，StarRocks 进一步增强了备份恢复功能，支持了更多对象，并且重构语法以提高灵活性。
@@ -294,24 +294,24 @@ PROPERTIES("backup_timestamp" = "2025-06-12-06-44-37-344",
 # StarRocks 定时备份脚本
 ## StarRocks 3.4 以上 定时备份库的脚本
 ```shell
-StarRocks/Backup_and_Migration/starrocks-snapshot.sh
+StarRocks存算一体/Backup_and_Migration/starrocks-snapshot.sh
 ```
 
 ## StarRocks 3.4以下不包括3.4 定时备份库和表的脚本
 ```shell
-StarRocks/Backup_and_Migration/starrocks-snapshot-3.3.3.sh
+StarRocks存算一体/Backup_and_Migration/starrocks-snapshot-3.3.3.sh
 ```
 
 ## 使用方法
 ```shell
 git clone https://github.com/shacklescn/Work-Notes.git
 
-cd Work-Notes/StarRocks/Backup_and_Migration
+cd Work-Notes/StarRocks存算一体/Backup_and_Migration
 
 #写入crontab
 root@starrocks:~# crontab -l
 # StarRocks snapshot备份 每台凌晨2点钟执行备份数据
-0 2 * * * /Work-Notes/StarRocks/Backup_and_Migration/starrocks-snapshot.sh
+0 2 * * * /Work-Notes/StarRocks存算一体/Backup_and_Migration/starrocks-snapshot.sh
 ```
 
 ## 修改脚本的变量部分

@@ -13,16 +13,7 @@ BE节点 10.84.0.12 磁盘容量告急，需扩展存储路径
 
 "新增 BE 节点 → 数据均衡 → 下线旧 BE 节点 → 删除旧 BE"
 
-stateDiagram
-[*] --> Normal: BE 正常运行
-Normal --> Decommissioning: 执行 DECOMMISSION
-Decommissioning --> 数据迁移中: SystemDecommissioned=true
-数据迁移中 --> 迁移完成: TabletNum=0
-迁移完成 --> 自动清除: 部分版本
-迁移完成 --> 手动清除: 需执行 DROP BACKEND
-手动清除 --> [*]
-
-全程在线操作，客户端无感知,需保证每个表的副本不是一个否则这个表在迁移中会无法访问
+全程在线操作，客户端无感知的前提需保证每个表的副本不是一个否则这个表在迁移中会无法访问
 新旧版本需保持一致，必须一致否则会报以下错误
 ![img.png](元数据不匹配ERROR.png)
 

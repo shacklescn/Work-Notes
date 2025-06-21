@@ -15,7 +15,7 @@ BE节点 10.84.0.12 磁盘容量告急，需扩展存储路径
 
 全程在线操作，客户端无感知的前提需保证每个表的副本不是一个否则这个表在迁移中会无法访问
 同时新旧版本需保持一致，**必须一致**否则会报以下元数据不匹配错误
-![img.png](元数据不匹配ERROR.png)
+![img.png](images/元数据不匹配ERROR.png)
 
 
 # 旧集群环境
@@ -46,7 +46,6 @@ ALTER SYSTEM ADD BACKEND "10.84.91.16:9050", "10.84.91.18:9050";
 # 验证 FE和BE 是否加入集群
 ```sql
 -- FE节点
-mysql> SHOW FRONTENDS\G;
 mysql> SHOW FRONTENDS\G;
 *************************** 1. row ***************************
              Name: 10.84.0.12_9010_1734934377134
@@ -349,7 +348,7 @@ mysql> SHOW PROC '/backends'\G
              BrpcPort: 8060
         LastStartTime: 2025-06-17 09:25:12
         LastHeartbeat: 2025-06-19 13:00:39
-                Alive: true
+                Alive: true     -- 状态为true  加入成功
  SystemDecommissioned: false
 ClusterDecommissioned: false
             TabletNum: 97518
@@ -388,4 +387,4 @@ ALTER SYSTEM DECOMMISSION BACKEND "10.84.0.19:9050";
 -- 下线 0.19 FE服务 建议一个一个下线
 ALTER SYSTEM DROP FOLLOWER "10.84.0.19:9010";
 ```
-BE下线完 会自动清除下线的BE,等执行 SHOW PROC '/backends'\G; 时看不到下线的BE的时候  再下线另外一个
+BE下线完 会自动清除下线的BE,等执行 ```SHOW PROC '/backends'\G;``` 时看不到下线的BE的时候  再下线另外一个

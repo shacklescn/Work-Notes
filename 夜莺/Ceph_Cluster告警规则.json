@@ -1,0 +1,370 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph Manager 服务不可用",
+    "note": "\\n\n\n**📌 检测指标信息**  \n▸ 集群：`{{$labels.cluster}}`  \n▸ 当前 MGR 状态：无活跃（ceph_mgrs_active=0）  \n▸ 触发条件：Ceph MGR 数量为 0\n\n**📍 问题分析**  \n✓ Ceph Manager 是集群监控与管理的核心组件  \n✓ 无活跃 MGR 节点可能影响 Dashboard、模块扩展、监控指标上报等功能  \n✓ 如长期未恢复，需检查 MGR 容器、守护进程是否正常运行\n\n**🛠 处理建议**  \n- 登录集群节点，执行以下命令检查 MGR 状态：\n  ceph -s\n  ceph mgr dump",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_mgrs_active == 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph MON 节点之间时钟偏差超限告警",
+    "note": "{{$labels.instance}} Ceph Monitor 节点时钟漂移异常\n\n**📌 检测指标信息**\n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前时钟偏差：{{ printf \"%.3f\" $value }} 秒  \n▸ 触发条件：Ceph MON 时钟偏差超过 0.2 秒\n\n**📍 影响分析**  \n✓ 多个 MON 节点时间不一致，可能影响选主与集群一致性  \n✓ 时间漂移可能导致 PG 状态、心跳监控等出现异常  \n✓ 集群可能频繁告警或行为异常（例如健康检查误报）  \n\n请检查该节点的 NTP 服务是否正常，确保所有 MON 节点时间同步",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "abs(ceph_monitor_clock_skew_seconds) > 0.2",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph OSD 写入延迟过高告警",
+    "note": "{{$labels.instance}} 上的 OSD 写入延迟过高\n\n**📌 检测指标信息**\n▸ 节点实例：`{{$labels.instance}}`  \n▸ OSD 名称：`{{$labels.osd}}`  \n▸ 当前写入应用延迟：{{ printf \"%.2f\" $value }} 秒  \n▸ 触发条件：ceph_osd_perf_apply_latency_seconds > 5\n\n**📍 影响分析**  \n✓ OSD 写入延迟高可能导致客户端 I/O 性能下降  \n✓ 可能由于磁盘性能下降、I/O 拥塞或 OSD 宕机恢复引起  \n✓ 延迟过高可能导致整体集群读写卡顿甚至挂起  \n\n请检查对应 OSD 所在磁盘和节点负载，及时优化或迁移数据，确保集群性能",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_osd_perf_apply_latency_seconds > 5",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph OSD 磁盘使用率告警",
+    "note": "{{$labels.instance}} 上的 OSD 使用率超过 90%\n\n**📌 检测指标信息**\n▸ 节点实例：`{{$labels.instance}}`  \n▸ OSD 名称：`{{$labels.osd}}`  \n▸ 当前 OSD 利用率：{{ printf \"%.1f\" $value }}%  \n▸ 触发条件：ceph_osd_utilization > 90%\n\n**📍 影响分析**  \n✓ 单个 OSD 使用率过高，可能导致数据写入失败  \n✓ Ceph 分布策略可能导致负载不均  \n✓ 如果持续恶化，可能影响整个集群的读写性能和数据可靠性  \n\n请尽快检查 OSD 存储使用情况，考虑均衡数据、副本重平衡或扩容集群",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_osd_utilization > 90",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph PG 状态异常告警",
+    "note": "Ceph 集群存在非 active 状态的 PG\n\n**📌 检测指标信息**\n▸ 异常 PG 数量：{{ printf \"%.0f\" $value }} 个  \n▸ 触发条件：存在非 active 状态的 PG（ceph_total_pgs - ceph_active_pgs > 0）\n\n**📍 影响分析**  \n✓ 非 active 状态的 PG 表明集群存在副本未同步或故障恢复中  \n✓ 可能影响数据访问的可用性和一致性  \n✓ 持续异常可能导致 I/O 性能下降或读写阻塞  \n\n请立即检查 Ceph 集群状态，确认 PG 状态（如 degraded、remapped、backfilling 等），并根据实际情况采取修复措施",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 120,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_total_pgs - ceph_active_pgs > 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 120s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph 存储节点 OSD 异常",
+    "note": "{{$labels.instance}} 上的 OSD 已下线\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.host}}`  \n▸ OSD 编号：`{{$labels.osd}}`  \n▸ 当前状态：已下线（ceph_osd_up = 0）  \n▸ 触发条件：OSD 状态为 down\n\n**📍 影响分析**  \n✓ Ceph 集群副本完整性可能受影响  \n✓ 可能导致部分 PG 状态异常（如 degraded、inactive）  \n✓ 若持续离线，可能触发数据迁移、性能下降或 IO 错误  \n\n请尽快检查 OSD 宿主机状态、网络连接、磁盘健康等，及时修复或替换",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_osd_up == 0",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph 集群健康状态异常",
+    "note": "Ceph 集群健康状态异常\n\n**📌 检测指标信息**\n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前健康状态代码：`{{ $value }}`  \n▸ 触发条件：ceph_health_status != 0（非 HEALTH_OK）\n\n**📍 影响分析**  \n✓ Ceph 集群可能存在磁盘故障、PG 异常、OSD 掉线、网络分区等问题  \n✓ HEALTH_WARN 说明存在可容忍的异常，需尽快处理  \n✓ HEALTH_ERR 表示存在严重问题，可能导致数据不可用或丢失  \n\n请登录 Ceph 管理节点执行 `ceph health detail`，查看具体异常项并及时修复",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_health_status != 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Ceph 集群剩余容量不足",
+    "note": "\\n\n**📌 检测指标信息**  \n▸ 实例节点：`{{$labels.instance}}`  \n▸ 当前剩余容量比例：`{{ printf \"%.2f\" $value }}%`  \n▸ 触发条件：剩余容量低于 15%\n\n**📍 影响分析**  \n✓ 可用空间不足，可能导致写入失败或集群变为只读  \n✓ 持续写入可能造成 PG 分布异常，影响数据均衡和性能  \n✓ 存储压力增大会影响整体集群稳定性和扩展性\n\n**🛠 处理建议**  \n- 使用 `ceph df` 命令查看当前存储占用  \n- 排查是否有无效数据或大数据导入任务  \n- 及时清理无效快照、对象、日志等  \n- 考虑添加新的 OSD 或节点扩容\n\n请尽快处理，避免 Ceph 集群进入只读或不可用状态。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "ceph_osd_total_avail_bytes{} / (ceph_osd_total_used_bytes{} + ceph_osd_total_avail_bytes{}) * 100 < 15",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Ceph"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

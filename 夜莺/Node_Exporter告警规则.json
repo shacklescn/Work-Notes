@@ -1,0 +1,738 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机 CPU iowait 过高",
+    "note": "节点 {{$labels.nodename}} 负载异常\n\n**🛑 当前状态**  \n▸ 指标值：{{$value | printf \"%.2f\"}}% （阈值 >10%）  \n▸ 影响节点：{{$labels.nodename}} ({{$labels.instance}})  \n▸ 检测窗口：5分钟滑动平均值  \n\n**🔍 根因分析**  \n✓ 磁盘性能瓶颈（HDD/网络存储吞吐不足）  \n✓ 异常进程持续写入（容器日志/数据库事务）  \n✓ 存储设备故障（SSD寿命耗尽/RAID异常）  \n\n**🚀 应急操作**  \n```bash\n# 查看实时磁盘IO（关注%util >80%为异常）\niostat -x 1\n\n# 定位高IO进程（按IO排序）\niotop -oP | head -n 5\n\n# 检查存储健康（机械盘/SSD）\nsmartctl -H /dev/sdX",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(avg by (instance) (rate(node_cpu_seconds_total{mode=\"iowait\"}[5m])) * 100 > 10) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机 CPU 负载过高",
+    "note": "{{$labels.instance}} 主机 CPU 负载过高\n\n**📌 检测指标信息** \n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前 CPU 负载率：{{ printf \"%.1f\" $value }}（非空闲 CPU 百分比）  \n▸ 触发条件：CPU 非空闲时间占比超过 80%\n\n**📍 影响分析**  \n✓ CPU 持续高负载，可能导致系统响应变慢  \n✓ 业务性能可能受到影响，甚至触发服务异常  \n✓ 建议排查占用高的进程，优化业务或增加计算资源\n\n请关注主机 CPU 使用情况，防止因 CPU 资源瓶颈导致业务中断",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum by (instance) (avg by (mode, instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[2m]))) > 0.8) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机 inode 空间不足",
+    "note": "{{$labels.instance}} 上文件系统 `{{$labels.mountpoint}}` 剩余 inode 低于 10%\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 文件系统挂载点：`{{$labels.mountpoint}}`  \n▸ 触发条件：剩余 inode 百分比低于 10%，且文件系统非只读  \n\n**📍 影响分析**  \n✓ 文件系统 inode 即将耗尽，可能导致新文件无法创建  \n✓ 业务写操作可能失败，出现磁盘写入异常  \n✓ 需尽快清理无用文件或扩容对应分区  \n\n请重点检查主机 `{{$labels.instance}}` 上挂载点 `{{$labels.mountpoint}}` 的文件系统使用情况，排查异常文件或调整系统配置",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(node_filesystem_files_free{fstype!=\"msdosfs\",device!~\"nsfs|tmpfs\"} / node_filesystem_files{fstype!=\"msdosfs\",device!~\"nsfs|tmpfs\"} * 100 < 10 and ON (instance, device, mountpoint) node_filesystem_readonly == 0) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机CPU可用率不足20%",
+    "note": "{{$labels.instance}} 主机 CPU 可用率不足\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前 CPU 可用率：`{{$value}}%`  \n▸ 触发条件：5 分钟内平均 CPU 可用率 < 20%\n\n**📍 影响分析**  \n✓ 表明主机处于高负载状态  \n✓ 持续空闲率过低可能导致服务响应变慢、调度失败等问题  \n✓ 可能由资源超卖、恶意进程、负载飙升等原因引起  \n\n请及时排查该节点上运行的高负载进程或资源争用情况。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) by (instance) * 100 <= 20",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机交换分区使用率过高",
+    "note": "{{$labels.instance}} Swap 使用率过高\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前 Swap 使用率：{{ printf \"%.1f\" $value }}%  \n▸ 触发条件：Swap 使用率超过 80%\n\n**📍 影响分析**  \n✓ 高 Swap 使用可能导致系统性能下降  \n✓ 可能出现内存不足，频繁的 Swap 读写影响磁盘寿命  \n✓ 业务进程可能受到内存压力，响应延迟加大  \n\n请检查系统内存使用情况，优化内存管理或扩容内存",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "((1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 80) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机内存不足",
+    "note": "{{$labels.instance}} 主机内存可用率过低\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前可用内存占比：{{ printf \"%.1f\" $value }}%  \n▸ 触发条件：内存可用率低于 10%\n\n**📍 影响分析**  \n✓ 主机内存紧张，可能导致程序 OOM 或响应变慢  \n✓ 系统可能开始使用 swap，进一步影响性能  \n✓ 内存占用持续增长可能存在泄漏风险  \n\n请检查内存使用情况，优化进程资源或考虑扩容内存",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机内存压力过大",
+    "note": "{{$labels.instance}} 主机内存压力过大\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前主缺页中断速率：{{ printf \"%.0f\" $value }} 次/分钟  \n▸ 触发条件：主缺页中断数超过 1000 次/分钟\n\n**📍 影响分析**  \n✓ 主机内存可能不足，频繁从磁盘读取数据页  \n✓ 应用程序访问内存性能下降，响应变慢  \n✓ 存在大量交换或内存争用，影响系统稳定性  \n\n请检查主机内存使用情况，优化程序内存使用或考虑扩容内存资源",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(rate(node_vmstat_pgmajfault[2m]) > 1000) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机文件描述符使用率过高告警",
+    "note": "{{$labels.instance}} 文件描述符使用率告警\n\n**📌 检测指标信息**  \n▸ 主机实例：`{{$labels.instance}}`  \n▸ 当前文件描述符使用率（小数形式，0.9 即 90%）：`{{$value}}`  \n▸ 触发条件：文件描述符使用率 > 0.9（即90%）\n\n**📍 影响分析**  \n✓ 文件描述符接近上限，可能导致连接失败或应用异常  \n✓ 建议检查打开文件句柄数，避免资源耗尽\n\n请及时排查系统资源。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  node_filefd_allocated{job=\"node-exporter\"} * 100 / node_filefd_maximum{job=\"node-exporter\"} > 90\n)",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机时钟出现偏差",
+    "note": "{{$labels.instance}} 系统时间漂移异常\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前偏移：`{{ $value }} 秒`  \n▸ 触发条件：时间偏移超过 ±0.05 秒，且仍在持续扩大  \n\n**📍 影响分析**  \n✓ 系统时间偏离标准 NTP，可能导致日志错乱、定时任务异常  \n✓ 数据库、Kafka、集群等依赖时间同步的组件可能报错  \n✓ 时间持续漂移将加剧系统故障风险  \n\n请检查主机 NTP 同步状态、时钟服务（如 `chronyd`, `ntpd`）是否异常",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "((node_timex_offset_seconds > 0.05 and deriv(node_timex_offset_seconds[5m]) >= 0) or (node_timex_offset_seconds < -0.05 and deriv(node_timex_offset_seconds[5m]) <= 0)) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机是否正常",
+    "note": "{{$labels.instance}} 实例异常\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ Job 名称：`{{$labels.job}}`  \n▸ 当前状态：未上报（up = 0）  \n▸ 触发条件：Node Exporter 实例无法被 Prometheus 采集\n\n**📍 影响分析**  \n✓ 主机监控数据无法获取，影响节点状态分析  \n✓ 可能由于节点宕机、Exporter 异常、网络故障或服务未启动  \n\n请检查对应节点或服务状态，确保 Node Exporter 正常运行。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "up{job=~\"(node-exporter|.*-node-exporter)\"} == 0",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机物理组件过热",
+    "note": "{{$labels.instance}} 主机温度过高告警\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 触发条件：监测到温度传感器读数超过 80℃  \n▸ 当前温度：{{ printf \"%.1f\" $value }}℃  \n\n**📍 影响分析**  \n✓ 主机温度过高可能导致硬件损坏或性能下降  \n✓ 长时间高温会缩短设备寿命，增加故障风险  \n✓ 请检查服务器散热系统及环境温度，及时排查异常\n\n建议尽快排查风扇、散热器工作状态，避免硬件故障",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "((node_hwmon_temp_celsius * ignoring(label) group_left(instance, job, node, sensor) node_hwmon_sensor_label{label!=\"tctl\"} > 80)) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机磁盘IO异常",
+    "note": "{{$labels.instance}} 磁盘 IO 负载过高\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 磁盘 IO 利用率：`{{ printf \"%.2f\" $value }}` (秒/秒)  \n▸ 触发条件：磁盘 IO 使用率超过 0.5（即 50%）\n\n**📍 影响分析**  \n✓ 磁盘 IO 资源紧张，可能导致应用响应变慢  \n✓ 数据库读写延迟增加，影响整体业务性能  \n✓ 可能存在磁盘瓶颈或异常 IO 进程\n\n请检查磁盘负载、相关进程和系统 IO 调度策略",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(rate(node_disk_io_time_seconds_total[2m]) > 0.5) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 2,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机磁盘剩余容量低于10%",
+    "note": "{{$labels.instance}} 上文件系统 `{{$labels.mountpoint}}` 剩余空间低于 10%\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 文件系统挂载点：`{{$labels.mountpoint}}`  \n▸ 触发条件：剩余空间百分比低于等于 10%，且文件系统非只读  \n\n**📍 影响分析**  \n✓ 文件系统剩余空间不足，可能导致写入失败  \n✓ 业务进程可能因磁盘满而异常退出  \n✓ 需尽快清理磁盘垃圾文件或扩容分区  \n\n请重点检查主机 `{{$labels.instance}}` 上挂载点 `{{$labels.mountpoint}}` 的磁盘使用情况，及时释放或扩容磁盘空间",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "((node_filesystem_avail_bytes{device!~\"nsfs|tmpfs|none\",mountpoint!~\"/boot.*\"} * 100) / node_filesystem_size_bytes{device!~\"nsfs|tmpfs|none\",mountpoint!~\"/boot.*\"} <= 10 and ON (instance, device, mountpoint) node_filesystem_readonly == 0) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机网络吞吐量异常(输入)",
+    "note": "{{$labels.instance}} 主机网络接收速率过高\n\n**📌 检测指标信息** \n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前接收速率：{{ printf \"%.2f\" $value }} MB/s  \n▸ 触发条件：网络接收速率超过 100 MB/s\n\n**📍 影响分析**  \n✓ 网络流量过高可能导致带宽拥塞  \n✓ 可能影响其他业务网络性能  \n✓ 需排查异常流量源或优化网络配置  \n\n请关注主机网络状况，避免因流量过载导致业务中断",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum by (instance) (rate(node_network_receive_bytes_total[2m])) / 1024 / 1024 > 100) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "主机网络吞吐量异常(输出)",
+    "note": "{{$labels.instance}} 主机网络发送速率过高\n\n**📌 检测指标信息** \n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 当前发送速率：{{ printf \"%.2f\" $value }} MB/s  \n▸ 触发条件：网络发送速率超过 100 MB/s\n\n**📍 影响分析**  \n✓ 网络流量过高可能导致带宽拥塞  \n✓ 可能影响其他业务网络性能  \n✓ 需排查异常流量源或优化网络配置  \n\n请关注主机网络状况，避免因流量过载导致业务中断",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum by (instance) (rate(node_network_transmit_bytes_total[2m])) / 1024 / 1024 > 100) * on(instance) group_left(nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "检测到主机 OOM kill",
+    "note": "{{$labels.instance}} 发生 OOM Kill 事件\n\n**📌 检测指标信息**\n▸ 目标主机：`{{$labels.instance}}`  \n▸ 主机名称：`{{$labels.nodename}}`  \n▸ 触发条件：过去1分钟内发生了内存不足导致的进程杀死事件\n\n**📍 影响分析**  \n✓ 服务器内存压力过大，触发内核 OOM Killer  \n✓ 可能导致关键服务进程被异常终止，影响业务稳定  \n✓ 建议排查内存使用情况，优化应用内存管理或增加内存容量\n\n请关注服务器内存和进程状况，避免频繁触发 OOM Kill",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(increase(node_vmstat_oom_kill[2m]) > 0) * on(instance) group_left (nodename) node_uname_info{nodename=~\".+\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Host"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

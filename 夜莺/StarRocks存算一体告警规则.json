@@ -1,0 +1,876 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks BE Compaction 失败频繁",
+    "note": "金沙江路 StarRocks BE Cumulative Compaction 失败报警\n\n告警描述:\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 类型：`{{$labels.type}}`  \n▸ 失败次数：`{{$value}}`（最近 1 分钟）  \n▸ 触发条件：Compaction 类型操作失败次数 > 3\n\n**📍 问题说明**  \n✓ 最近 1 分钟内，出现了 Cumulative 或 Base Compaction 类型的失败操作  \n✓ 可能由于数据碎片、资源瓶颈、版本过多或磁盘压力导致  \n\n**🛠 处理建议**  \n请登录对应 BE 节点，执行如下命令排查异常 Tablet：\ngrep -E 'compaction' be.INFO | grep failed",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(starrocks_be_engine_requests_total{job=\"jsj-starrocks\", status=\"failed\", type=\"cumulative_compaction\"}[1m]) > 3\nor\nincrease(starrocks_be_engine_requests_total{job=\"jsj-starrocks\", status=\"failed\", type=\"base_compaction\"}[1m]) > 3",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks BE CPU 使用率过高",
+    "note": "金沙江路 StarRocks BE 实例 CPU 使用率过高\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 所属 Job：`{{$labels.job}}`  \n▸ 当前 CPU 使用率：`{{ printf \"%.2f\" $value }}%`  \n▸ 触发条件：CPU 使用率 > 90%\n\n**📍 影响分析**  \n✓ 高 CPU 使用率可能导致 BE 查询、计算任务响应变慢  \n✓ 如果持续过高，可能引发任务阻塞、服务异常等问题  \n\n**🛠️ 处理建议**  \n✓ 检查该 BE 实例是否存在重负载 SQL、资源抢占等问题  \n✓ 优化 SQL 查询或任务调度策略  \n✓ 必要时扩容 BE 实例或提升节点资源配额",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(1-(sum(rate(starrocks_be_cpu{mode=\"idle\", job=\"jsj-starrocks\",instance=~\".*\"}[5m])) by (job, instance)) / (sum(rate(starrocks_be_cpu{job=\"jsj-starrocks\",host=~\".*\"}[5m])) by (job, instance))) * 100 > 90",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks BE Tablet Rowset 数过高",
+    "note": "金沙江路  StarRocks BE Tablet 版本个数超限制报警\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 当前最大 Tablet Rowset 数：`{{$value}}`  \n▸ 触发条件：BE 节点上某个 Tablet 的 Rowset 数超过 700，说明合并未及时进行\n\n**📍 问题说明**  \n✓ Rowset 代表一个数据版本，数量异常说明 Tablet 长时间未被 Compaction  \n✓ 高 Rowset 数可能会影响查询性能并加重存储负担\n\n**🛠 处理建议**  \n- 检查该 BE 节点是否存在 Compaction 异常  \n- 查看 BE 日志中是否有 compaction failed 的错误  \n- 通过以下语句查看版本数过多的 Tablet\nSELECT BE_ID,TABLET_ID FROM information_schema.be_tablets WHERE NUM_ROWSET>700;",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "starrocks_be_max_tablet_rowset_num{job=\"jsj-starrocks\"} > 700",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks BE 实例掉线告警",
+    "note": "金沙江路 StarRocks BE 实例存活异常\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 状态：`down`  \n▸ 触发条件：BE 实例 `up == 0`  \n\n**📍 影响分析**  \n✓ 当前 BE 实例不可达，可能影响数据存储和查询性能  \n✓ 多个 BE 异常可能造成分布式计算中断或查询失败\n\n**🛠️ 处理建议**  \n✓ 登录实例查看 BE 日志（如 `/apps/StarRocks/be/log/be.INFO`, `/apps/StarRocks/be/log/be.out`）  \n✓ 检查服务是否运行、端口是否监听、资源是否耗尽  \n✓ 可尝试重启 BE 服务或容器",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "up{job=\"jsj-starrocks\", endpoint=\"be-metrics\"} == 0",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks BE 磁盘使用率过高",
+    "note": "金沙江路 StarRocks BE 磁盘使用率过高\n\n**📌 检测指标信息**  \n▸ 节点 Host：`{{$labels.instance}}`  \n▸ 磁盘路径：`{{$labels.path}}`  \n▸ 当前磁盘使用率：`{{ printf \"%.2f\" $value }}%`  \n▸ 触发条件：使用率大于 90%\n\n**📍 影响分析**  \n✓ 磁盘空间不足可能导致数据写入失败  \n✓ 持续占满会影响 BE 的正常运行和查询性能  \n✓ 超出阈值后 BE 节点可能被强制下线或写入中断\n\n**🛠️ 处理建议**  \n✓ 清理无用数据或日志  \n✓ 扩容磁盘或调整数据分布  \n✓ 检查 StarRocks BE 节点的存储配置和写入策略",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(SUM(starrocks_be_disks_total_capacity{job=\"jsj-starrocks\"}) by (instance, path) \n - SUM(starrocks_be_disks_avail_capacity{job=\"jsj-starrocks\"}) by (instance, path)) \n/ SUM(starrocks_be_disks_total_capacity{job=\"jsj-starrocks\"}) by (instance, path) * 100 > 90",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks FE CheckPoint 失败报警",
+    "note": "金沙江路 StarRocks FE CheckPoint 失败报警\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 当前 BDB 日志数量：`{{$value}}`  \n▸ 触发条件：meta_log_count 超过 100000，CheckPoint 未触发或失败\n\n**📍 问题说明**  \n✓ 正常情况下，日志数量超过 50000 时系统应自动触发 CheckPoint  \n✓ 若日志堆积超过 100000 且未重置，可能表示 CheckPoint 出现故障  \n✓ 长期未 CheckPoint 会导致元数据膨胀，影响系统启动和性能\n\n**🛠 处理建议**  \n- 登录 FE Leader 节点，查看 `fe.log` 日志文件  \n- 搜索关键字 `begin to generate new image:` 和 `checkpoint finished save image`  \n- 若存在 `Exception when generate new image file`，说明 CheckPoint 失败  \n- 分析失败原因前，请勿直接操作元数据，建议联系支持人员协助处理\n\n请及时排查 FE 节点状态，确保元数据安全与系统稳定性。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "starrocks_fe_meta_log_count{job=\"jsj-starrocks\",instance=\"10.84.91.16:8030\"} > 100000",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks FE Compaction 压力过大",
+    "note": "金沙江路 StarRocks FE Compaction 压力过大\n\n告警描述:\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 当前最大 Compaction Score：`{{$value}}`  \n▸ 触发条件：Compaction Score 大于 100（压力过大）\n\n**📍 问题说明**  \n✓ FE 节点 Compaction 压力过大，可能导致系统写入/查询性能下降  \n✓ 通常是由于高频率导入、`INSERT INTO VALUES` 或并发 `DELETE` 操作造成  \n\n**🛠 处理建议**  \n- 检查近期是否有频繁的导入任务或大量并发 DELETE 操作  \n- 尽量避免高并发、小批量导入，建议导入间隔不小于 **5 秒**  \n- 不建议同时提交大量 `DELETE` 任务  \n\n可通过系统日志和导入任务分析，进一步判断负载来源。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "starrocks_fe_max_tablet_compaction_score{job=\"jsj-starrocks\",instance=\"10.84.91.16:8030\"} > 100",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks FE JVM 使用率高报警",
+    "note": "金沙江路 StarRocks FE JVM 使用率超过 90%\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 当前使用率：`{{$value}}%`  \n▸ 触发条件：FE JVM 堆使用率超过 90%\n\n**📍 问题说明**  \n✓ FE 节点 JVM 内存使用过高，可能出现频繁 GC 或 OOM  \n✓ 系统可能处于高负载状态，或存在内存泄漏风险\n\n**🛠 处理建议**  \n- 使用如下命令导出内存使用快照（建议用于排查）：  \n  > 注意：加 `:live` 可能会导致 FE 重启，请谨慎操作  \n  ```bash\n  jmap -histo[:live] $fe_pid > jmap.dump\n",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum by (instance) (jvm_heap_size_bytes{job=\"jsj-starrocks\", type=\"used\"}) * 100 / sum by (instance) (jvm_heap_size_bytes{job=\"jsj-starrocks\", type=\"max\"}) > 90",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks FE 实例掉线告警",
+    "note": "金沙江路 StarRocks FE 实例存活异常\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 状态：`down`  \n▸ 触发条件：FE 实例 `up == 0`  \n\n**📍 影响分析**  \n✓ 当前 FE 实例不可达，可能无法参与元数据同步和查询调度  \n✓ 多个实例同时异常可能影响整个集群稳定性  \n\n**🛠️ 处理建议**  \n✓ 登录实例查看 FE 日志，路径如 `/apps/StarRocks/fe/log/fe.log`  \n✓ 检查容器、服务端口和网络连通性  \n✓ 若为滚动重启或预期宕机，请忽略告警或设置维护窗口",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "up{job=\"jsj-starrocks\", endpoint=\"fe-metrics\"} == 0",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks FE 线程数高报警",
+    "note": "金沙江路 StarRocks FE 线程数大于3000\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 线程池类型：`{{$labels.type}}`  \n▸ 当前线程数：`{{$value}}`  \n▸ 触发条件：FE 某类线程池线程数超过 3000\n\n**📍 问题说明**  \n✓ StarRocks FE 节点线程数默认上限为 4096  \n✓ 若线程数持续过高，可能导致请求积压、服务响应变慢甚至拒绝连接  \n✓ 常见诱因是频繁且高并发的 `UNION ALL` 查询或错误的并发配置\n\n**🛠 处理建议**  \n- 优化 SQL：降低 `UNION ALL` 查询的并发，拆分或合并语句  \n- 设置查询并发度限制：建议适当调低 `pipeline_dop`，如：  \nSET GLOBAL pipeline_dop=8;\n- 紧急情况下，为尽快恢复服务，可以选择调大 FE 动态参数 thrift_server_max_worker_threads（默认值：4096）\nADMIN SET FRONTEND CONFIG (\"thrift_server_max_worker_threads\"=\"8192\");",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "starrocks_fe_thread_pool{job=\"jsj-starrocks\", type!=\"completed_task_count\"} > 3000",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks Routine Load 消费延迟过高",
+    "note": "金沙江路 StarRocks Routine Load 消费延迟超过 30 万条\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`    \n▸ 当前最大延迟：`{{$value}}` 条  \n▸ 触发条件：最大消费延迟超过 30 万条\n\n**📍 问题说明**  \n✓ Routine Load 任务消费堆积，Kafka/数据源数据未被及时处理  \n✓ 可能因任务调度异常、资源瓶颈或消费能力不足导致\n\n**🛠 处理建议**  \n- 登录 FE 节点，查看任务状态  \n- 检查任务状态是否为 `NEED_SCHEDULE`、`PAUSED` 或 `UNSTABLE`  \n- 查看 FE 日志中是否存在调度失败、消费失败、任务崩溃等信息  \n- 检查系统资源是否足够（CPU/Mem/IO）  \n- 可使用 SQL 查询任务状态：  \n  SHOW ROUTINE LOAD;",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "rate(starrocks_fe_txn_failed{job=\"jsj-starrocks\",instance=\"10.84.91.16:8030\"}[5m]) * 100 > 5",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks Schema Change 异常报警",
+    "note": "金沙江路 StarRocks Schema Change 异常报警\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 当前失败次数（近 1 分钟）：`{{$value}}`  \n▸ 类型：`Schema Change`  \n▸ 触发条件：1 分钟内失败次数 > 1\n\n**📍 问题说明**  \n✓ Schema Change 操作失败可能影响 DDL 执行和表结构更新  \n✓ 失败可能由字段冲突、元数据异常或任务调度失败引起  \n\n**🛠 处理建议**  \n- 执行以下命令排查失败任务信息：\nSHOW ALTER COLUMN FROM $db;",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(starrocks_be_engine_requests_total{job=\"jsj-starrocks\", type=\"schema_change\", status=\"failed\"}[1m]) > 1",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 单个 DB 导入事务超限",
+    "note": "金沙江路 StarRocks 单个 DB 导入事务超限\n\n**📌 检测指标信息**  \n▸ 数据库名称：`{{$labels.db}}`  \n▸ 当前导入事务数：`{{$value}}`  \n▸ 触发条件：某个数据库导入事务数 > 900（v3.1 前为 100）\n\n**📍 问题说明**  \n✓ 单个 DB 导入事务数量异常增长  \n✓ 可能因导入任务频繁、积压严重导致系统压力增大\n\n**🛠 处理建议**  \n- 检查该 DB 是否存在大量导入任务同时进行  \n- 考虑优化导入频率或分批导入  \n- 可临时提升事务数限制（根据版本）：\nADMIN SET FRONTEND CONFIG (\"max_running_txn_num_per_db\" = \"2000\");",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum(starrocks_fe_txn_running{job=\"jsj-starrocks\"}) by (db) > 900",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 导入失败率过高报警",
+    "note": "金沙江路 StarRocks 导入失败率超过 5%\n\n**📌 检测指标信息**  \n▸ 实例地址：`{{$labels.instance}}`  \n▸ 当前失败率：`{{$value}}%`  \n▸ 触发条件：导入失败事务占比超过 5%\n\n**📍 问题说明**  \n✓ FE 节点导入事务失败率异常升高  \n✓ 可能由网络抖动、写入压力过大或任务异常等导致\n\n**🛠 处理建议**  \n- 登录 Leader FE 节点，检查 `fe.log` 日志  \n- 可搜索关键字：`status: ABORTED`  \n- 查看失败的导入事务记录，如：  \n  ```text\n  transaction status: ABORTED, reason: [E1008]Reached timeout=30000ms",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "rate(starrocks_fe_txn_failed{job=\"jsj-starrocks\",instance=\"10.84.91.16:8030\"}[5m]) * 100 > 5",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 查询失败率异常",
+    "note": "金沙江路 StarRocks 失败查询数超过 10 次\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 当前失败率/数量：`{{$value}}`  \n▸ 触发条件：  \n  - 查询失败率超过 10%  \n  - 或 1 分钟内失败查询数超过 10 次（内部错误）\n\n**📍 问题说明**  \n✓ 查询失败率显著升高，可能影响正常业务请求  \n✓ 查询失败可能由语法错误、超时、资源异常或系统故障引起\n\n**🛠 处理建议**  \n- 使用 `grep 'State=ERR' fe.audit.log` 查看具体失败查询  \n- 若安装了 AuditLoader 插件，可通过 SQL 查询失败语句：  \n  `SELECT stmt FROM starrocks_audit_db__.starrocks_audit_tbl__ WHERE state='ERR';`  \n- 检查 fe.log 是否存在内部错误、异常堆栈、Query Dump 等信息  \n- 可联系支持人员分析内核异常情况\n\n请尽快排查，避免影响更多用户请求。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(starrocks_fe_query_internal_err{job=\"jsj-starrocks\"}[1m]) > 10",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 查询延迟异常",
+    "note": "金沙江路 StarRocks 查询延迟大于 5000ms（5 秒）\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ Quantile：`{{$labels.quantile}}`  \n▸ 当前 P95 查询延迟：`{{$value}} ms`  \n▸ 触发条件：P95 查询延迟大于 5000ms（5 秒）\n\n**📍 问题说明**  \n✓ 查询延迟显著升高，影响用户请求体验  \n✓ 可能原因包括：慢查询、资源竞争、系统负载高等\n\n**🛠 处理建议**  \n- 使用 `SHOW PROC '/current_queries'` 分析当前慢查询  \n- 检查 CPU、磁盘 IO 是否存在瓶颈  \n- 排查是否存在大批量 JOIN / GROUP BY / INSERT 任务  \n- 可通过限制并发或优化 SQL 提升响应速度\n- 紧急情况下，为尽快恢复服务，可以通过以下方式处理：\n\n如果是异常峰值流量激增导致资源占用高引起的查询失败，可通过紧急减少业务流量，并重启对应的 BE 节点释放积压的查询。\n如果是正常情况下资源占用高触发报警，则可以考虑扩容节点。\n",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "starrocks_fe_query_latency_ms{job=\"jsj-starrocks\", quantile=\"0.95\"} > 5000",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 查询请求或连接数突增",
+    "note": "金沙江路 StarRocks 查询过载报警\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 当前变化率：`{{$value}}%`  \n▸ 触发条件：QPS 或连接数在近 1 分钟内环比增长超过 100%\n\n**📍 问题说明**  \n✓ 查询量或连接数激增，可能存在查询过载或恶性请求  \n✓ 高频查询行为可能对 FE/BE 节点造成资源压力\n\n**🛠 处理建议**  \n- 检查 `fe.audit.log`，定位异常查询语句  \n- 若业务上有变更，关注集群资源情况  \n- 可考虑增加 BE 节点或调低查询并发限额",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "abs((sum by (instance) (starrocks_fe_connection_total{job=\"jsj-starrocks\"})-sum by (instance) (starrocks_fe_connection_total{job=\"jsj-starrocks\"} offset 3m))/sum by (instance) (starrocks_fe_connection_total{job=\"jsj-starrocks\"})) * 100 > 100",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 物化视图刷新异常",
+    "note": "金沙江路 StarRocks 物化视图刷新异常\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 最近失败刷新次数（5 分钟）：`{{$value}}`  \n▸ 触发条件：5 分钟内物化视图刷新失败次数 > 0\n\n**📍 问题说明**  \n✓ 某些物化视图刷新失败，可能导致查询结果不及时或错误  \n✓ 失败原因可能为任务调度异常、依赖表变更、资源不足等  \n\n**🛠 处理方法**  \n1、查看刷新失败的物化视图：\nSELECT TABLE_NAME,IS_ACTIVE,INACTIVE_REASON,TASK_NAME FROM information_schema.materialized_views WHERE LAST_REFRESH_STATE !=\" SUCCESS\";\n2、尝试手动刷新该物化视图：\nREFRESH MATERIALIZED VIEW $mv_name;\n3、如果物化视图状态为 INACTIVE，可通过以下方式尝试置为激活：\nALTER MATERIALIZED VIEW $mv_name ACTIVE;\n4、排查刷新失败的原因：\nSELECT * FROM information_schema.task_runs WHERE task_name ='mv-112517' \\G\n",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(starrocks_fe_mv_refresh_total_failed_jobs[5m]) > 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "金沙江路 StarRocks 用户连接数过高",
+    "note": "金沙江路 StarRocks 用户连接数过高\n\n**📌 检测指标信息**  \n▸ 当前连接数：`{{$value}}`  \n▸ 触发条件：用户连接数超过 100\n\n**📍 问题说明**  \n✓ 当前用户连接数接近或超过限制，可能影响系统稳定性  \n✓ 长连接未释放或客户端连接异常，可能导致资源耗尽\n\n**🛠 处理建议**  \n- 通过 `SHOW PROCESSLIST` 查看连接明细  \n- 使用 `KILL` 命令终止无效连接  \n- 调整 `wait_timeout` 系统变量（如设为 3600 秒）控制空闲连接  \n- 如有必要，使用以下命令临时提高连接上限：  \n  `ALTER USER 'user' SET PROPERTIES (\"max_user_connections\" = \"1000\");`\n",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum by (user) (starrocks_fe_connection_total{job=\"jsj-starrocks\"}) > 100",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "project=jsj"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

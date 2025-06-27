@@ -153,6 +153,7 @@ SnapshotFinishedTime: 2025-06-13 16:57:15
 - UPLOAD_INFO：上传元数据文件和本次备份作业的信息。
 - FINISHED：备份完成。
 - CANCELLED：备份失败或被取消。
+
 说明：
 
 **在3.4以下不包括3.4版本 只能备份表引擎为OLAP的(ENGINE=OLAP) 不能备份External Catalog(外表)的元数据**

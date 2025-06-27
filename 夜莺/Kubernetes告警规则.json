@@ -1,0 +1,1566 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "ks-apiserver 容器未运行或失联",
+    "note": "KubeSphere API Server 未运行或无监控数据上报\n\n**📌 检测指标信息**  \n▸ 组件名称：`ks-apiserver`  \n▸ 检测方式：Prometheus `up == 1` 存在性判断  \n▸ 触发条件：无可用的 ks-apiserver 实例上报监控数据\n\n**📍 影响分析**  \n✓ KubeSphere 的核心 API 服务已不可用  \n✓ 用户界面操作、资源查询、权限认证等功能将受影响  \n✓ 可能因服务崩溃、网络中断、POD 被删除等原因导致\n\n请立即通过以下命令检查组件状态：\n\n```bash\nkubectl -n kubesphere-system get pods -l app=ks-apiserver",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "absent(up{job=\"ks-apiserver\"} == 1)",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=KubeSphere"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "ks-apiserver 接口请求延迟过高（P99）",
+    "note": "KubeSphere API Server 请求处理延迟异常（P99）\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ API 版本：`{{$labels.version}}`  \n▸ 请求方法：`{{$labels.verb}}`  \n▸ 资源类型：`{{$labels.resource}}`  \n▸ API 分组：`{{$labels.group}}`  \n▸ 当前 P99 延迟：{{ printf \"%.2f\" $value }} 秒  \n▸ 触发条件：ks-apiserver 请求处理 P99 超过 5 秒（5 分钟窗口）\n\n**📍 影响分析**  \n✓ API Server 请求延迟过高，用户界面操作可能卡顿或失败  \n✓ 管理平台接口调用缓慢，可能影响 DevOps、应用部署、审计等功能  \n✓ 可能由数据库慢查询、资源争用或系统负载过高引起\n\n请检查 apiserver 所在节点资源、依赖服务（如 MySQL、Redis）及网络状况",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(\n  0.99,\n  sum by(instance, group, resource, verb, version, le, cluster) (\n    rate(ks_server_request_duration_seconds_bucket{group!=\"terminal.kubesphere.io\", job=\"ks-apiserver\"}[5m])\n  )\n) > 5",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=KubeSphere"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "ks-controller-manager 容器未运行或探测失败",
+    "note": "KubeSphere 控制器管理器未运行或无数据上报\n\n**📌 检测指标信息**  \n▸ 组件名称：`ks-controller-manager`  \n▸ 检测表达式：`absent(up == 1)`  \n▸ 触发条件：组件未在 Prometheus 中注册，或未正常响应探测\n\n**📍 影响分析**  \n✓ 控制器可能未启动、异常退出或已被删除  \n✓ 组件未暴露 /metrics 接口或被 Prometheus 忽略  \n✓ Kubernetes 控制面逻辑（如 DevOps、流水线等）可能受影响\n\n请检查该组件的部署状态（kubectl get pod），并确认其是否运行并正常暴露监控端口",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "absent(up{job=\"ks-controller-manager\"} == 1)",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=KubeSphere"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kube-State-Metrics List 操作错误率过高",
+    "note": "{{$labels.namespace}} / {{$labels.service}} Kube-State-Metrics List 操作错误率异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 服务名称：`{{$labels.service}}`  \n▸ 当前错误率（单位比例）：`{{$value}}`  \n▸ 触发条件：List 操作中错误率超过 0.01（即 1%）\n\n**📍 影响分析**  \n✓ kube-state-metrics 与 API Server 通信可能存在错误或被限流  \n✓ List 操作失败可能导致监控采集不完整，数据缺失  \n✓ 若持续异常，需检查 API Server 的健康状态和调用频率\n\n建议排查 `kube-state-metrics` 的访问权限、限流配置及其所在节点网络连通性。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum by(cluster,namespace,service) (rate(kube_state_metrics_list_total{job=\"kube-state-metrics\",result=\"error\"}[5m]))\n  /\nsum by(cluster,namespace,service) (rate(kube_state_metrics_list_total{job=\"kube-state-metrics\"}[5m])))\n> 0.01",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kube-State-Metrics Shard 序号异常",
+    "note": "{{$labels.namespace}} / {{$labels.service}} Shard 序号异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 服务名称：`{{$labels.service}}`  \n▸ 触发条件：Shard 序号分布异常，编号缺失或不连续\n\n**📍 影响分析**  \n✓ shard 编号异常可能导致部分数据无法采集或写入  \n✓ 可能出现监控数据丢失、报警遗漏等问题  \n✓ 需检查 shard 配置、部署状态及网络通信是否正常  \n\n请尽快排查 shard 配置与状态，确保数据采集完整可靠。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "2^max by(cluster,namespace,service) (kube_state_metrics_total_shards{job=\"kube-state-metrics\"}) - 1\n  -\nsum by(cluster,namespace,service) ( 2 ^ max by (shard_ordinal,cluster,namespace,service) (kube_state_metrics_shard_ordinal{job=\"kube-state-metrics\"}) )\n!= 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kube-State-Metrics Shard 数量波动异常",
+    "note": "{{$labels.namespace}} / {{$labels.service}} Shard 数量波动异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 服务名称：`{{$labels.service}}`  \n▸ 当前方差值：`{{$value}}`  \n▸ 触发条件：Shard 数量的方差不为 0，存在异常波动  \n\n**📍 影响分析**  \n✓ Shard 数量异常波动，可能导致数据采集不稳定  \n✓ 可能存在配置不一致、分片变更或服务重启等问题  \n✓ 影响监控数据的完整性和准确性  \n\n请排查相关服务配置和状态，确认 shard 变动原因，确保监控稳定。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "stdvar by(cluster,namespace,service) (kube_state_metrics_total_shards{job=\"kube-state-metrics\"}) != 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kube-State-Metrics Watch 操作错误率过高",
+    "note": "{{$labels.namespace}} / {{$labels.service}} Watch 操作错误率异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 服务名称：`{{$labels.service}}`  \n▸ 当前错误率（比例值）：`{{$value}}`  \n▸ 触发条件：Watch 操作中错误率超过 0.01（即 1%）\n\n**📍 影响分析**  \n✓ Watch 操作失败可能导致资源变更事件未能及时捕捉  \n✓ kube-state-metrics 与 Kubernetes API Server 通信异常  \n✓ 若持续存在错误，可能影响监控准确性和系统稳定性\n\n请检查 API Server 访问是否正常，排查 kube-state-metrics 的调用频率、权限配置和节点连通性。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum by(cluster,namespace,service) (rate(kube_state_metrics_watch_total{job=\"kube-state-metrics\",result=\"error\"}[5m]))\n  /\nsum by(cluster,namespace,service) (rate(kube_state_metrics_watch_total{job=\"kube-state-metrics\"}[5m])))\n> 0.01",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet Server 证书即将过期",
+    "note": "{{$labels.instance}} 节点的 Kubelet Server 证书即将过期\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 剩余有效期：`{{ printf \"%.1f\" $value }}` 天  \n▸ 触发条件：Server 证书剩余有效期小于 7 天\n\n**📍 影响分析**  \n✓ Server 证书即将过期，Kubelet 与 API Server 的安全通信可能中断  \n✓ 若未及时续签，节点可能被集群剔除，影响正常调度和管理  \n✓ 证书过期还可能导致 Kubelet 无法监听安全端口，影响节点健康状态  \n\n建议检查：  \n- 是否开启了 `--rotate-server-certificates` 证书自动轮换功能  \n- 查看 kubelet 日志中是否有证书续签失败的报错  \n- 必要时重启 kubelet 或手动更新证书  ",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "kubelet_certificate_manager_server_ttl_seconds / 86400 < 7",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet Server 证书续签失败告警",
+    "note": "{{$labels.instance}} 节点的 Kubelet Server 证书续签失败\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 最近 5 分钟内续签错误次数：`{{$value}}` 次  \n▸ 触发条件：续签错误次数增加（> 0）\n\n**📍 影响分析**  \n✓ Server 证书续签失败可能导致 Kubelet 无法启动安全监听端口  \n✓ 节点可能无法与集群组件进行安全通信，影响集群正常运行  \n✓ 长期续签失败会导致节点服务不可用或被剔除出集群  \n\n请及时排查：\n- 确认是否启用了 `--rotate-server-certificates` 参数  \n- 查看 kubelet 日志中是否有证书续签失败相关报错  \n- 检查节点时间同步和网络连通性  \n- 必要时重启 kubelet 或手动更新证书",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(kubelet_server_expiration_renew_errors[5m]) > 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet 处理 Pod 延迟告警",
+    "note": "{{$labels.node}} 节点 Kubelet 处理 Pod 耗时过高\n\n**📌 检测指标信息**  \n▸ 节点名称：`{{$labels.node}}`  \n▸ 实例：`{{$labels.instance}}`  \n▸ P99 Pod 处理耗时：`{{$value}}` 秒  \n▸ 触发条件：Kubelet pod_worker_duration P99 > 60 秒（最近 5 分钟）\n\n**📍 影响分析**  \n✓ Kubelet 对 Pod 生命周期事件响应缓慢，可能导致调度延迟或状态漂移  \n✓ 容器重建、探针失败、资源分配延迟等风险增加  \n✓ 常见原因包括节点资源耗尽、IO 瓶颈、容器异常、Kubelet 阻塞\n\n建议检查：\n- 该节点的 CPU、内存、磁盘 IO 状况  \n- Kubelet 进程是否负载异常或日志中有错误  \n- 调度队列、探针执行情况",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(0.99, sum(rate(kubelet_pod_worker_duration_seconds_bucket{job=\"kubelet\"}[5m])) by (instance, le, cluster)) \n* on(instance, cluster) group_left(node) kubelet_node_name{job=\"kubelet\"} > 60",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet 客户端证书即将过期",
+    "note": "{{$labels.instance}} 节点的 Kubelet 客户端证书即将过期\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 剩余有效期：`{{$value}}` 天  \n▸ 触发条件：证书剩余时间少于 7 天\n\n**📍 影响分析**  \n✓ Kubelet 证书即将过期，可能导致无法连接 API Server  \n✓ 节点状态异常、Pod 无法调度、自动续签失败风险高  \n✓ 若证书彻底失效，Kubelet 会被集群剔除\n\n请检查：\n- Kubelet 是否启用了证书自动轮换（--rotate-certificates）  \n- 节点系统时间与集群时间是否一致  \n- 日志中是否存在轮换失败或证书异常提示",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "kubelet_certificate_manager_client_ttl_seconds / 86400 < 7",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 360,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet 客户端证书续签失败告警",
+    "note": "{{$labels.instance}} 节点的 Kubelet 客户端证书续签失败\n\n**📌 检测指标信息**  \n▸ 实例：`{{$labels.instance}}`  \n▸ 最近 5 分钟内续签错误次数：`{{$value}}` 次  \n▸ 触发条件：续签错误次数增加（> 0）\n\n**📍 影响分析**  \n✓ 证书续签失败可能导致 Kubelet 客户端证书过期  \n✓ 节点可能无法与 API Server 安全通信，影响 Pod 调度和状态同步  \n✓ 长期续签失败会导致节点被集群剔除，影响业务稳定性\n\n请及时排查：\n- kubelet 证书自动轮换配置是否正常（`--rotate-certificates`）  \n- 节点系统时间和 API Server 时间是否同步  \n- kubelet 日志中是否存在续签错误或异常信息  \n- 网络连通性是否正常",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase(kubelet_certificate_manager_client_expiration_renew_errors[5m]) > 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubelet 节点服务状态异常",
+    "note": "{{$labels.instance}} 节点的 kubelet 服务不可用\n\n**📌 检测指标信息**  \n▸ 目标 Job：`kubelet`  \n▸ 当前状态：`down`  \n▸ 触发条件：up 指标为 0 或无数据  \n\n**📍 影响分析**  \n✓ 该节点 kubelet 服务异常，无法正常汇报状态  \n✓ Pod 状态同步失败，调度异常  \n✓ 集群可能无法管理该节点  \n\n请立即排查：\n- 节点 kubelet 服务是否启动  \n- 网络连接是否正常  \n- 监控采集配置是否有变更\n",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "up{job=\"kubelet\"} == 0 or absent(up{job=\"kubelet\"})",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Server 客户端证书有效期不足7天",
+    "note": "{{$labels.instance}} 的 Apiserver 客户端证书即将过期\n\n**📌 检测指标信息**  \n▸ 监控目标实例：`{{$labels.instance}}`  \n▸ 证书最短剩余有效期（1% 分位）：`{{printf \"%.1f\" $value}}` 天 (< 7 天)  \n▸ 触发条件：客户端证书有效期不足 7 天  \n\n**📍 影响分析**  \n✓ 证书过期可能导致客户端无法安全访问 API Server  \n✓ 影响认证和授权，可能导致服务不可用或异常  \n✓ 请及时排查证书续签及自动轮换机制  \n\n建议排查：  \n- 证书自动轮换是否正常工作  \n- 证书是否存在过期或即将过期情况  \n- 检查 API Server 日志是否有证书相关错误  ",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "apiserver_client_certificate_expiration_seconds_count{job=\"apiserver\"} > 0 and on(job, cluster) histogram_quantile(0.01, sum by (job, le, cluster) (rate(apiserver_client_certificate_expiration_seconds_bucket{job=\"apiserver\"}[5m]))) / 86400 < 7",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Server 客户端请求 5xx 错误率过高",
+    "note": "Kubernetes 客户端组件访问 Apiserver 出现大量 5xx 错误\n\n**📌 检测指标信息**  \n▸ 实例：`{{ $labels.instance }}`  \n▸ 组件：`{{ $labels.job }}`  \n▸ 命名空间：`{{ $labels.namespace }}`  \n▸ 当前 5xx 错误比例：`{{ $value }}`  \n▸ 触发条件：5 分钟内请求中 5xx 错误占比超过 1%\n\n**📍 影响分析**  \n✓ 控制组件请求 Apiserver 频繁失败  \n✓ 可能影响 controller-manager、scheduler 的稳定性  \n✓ 检查 Apiserver 健康、负载或网络异常",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(sum(rate(rest_client_requests_total{code=~\"5..\"}[5m])) by (instance, job, namespace, cluster)\n  /\nsum(rate(rest_client_requests_total[5m])) by (instance, job, namespace, cluster))\n> 0.01",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Server 节点故障",
+    "note": "API Server 实例 `{{$labels.instance}}` 不可用\n\n**📌 检测指标信息**  \n▸ 监控目标实例：`{{$labels.instance}}`  \n▸ 触发条件：该实例 `up` 指标为 0，表示实例不可达  \n\n**📍 影响分析**  \n✓ 该 Apiserver 实例不可用，可能导致部分 API 请求失败  \n✓ 集群高可用性可能受影响，需关注其他节点状态  \n✓ 可能由于节点故障、服务宕机或网络问题导致  \n✓ 请尽快排查实例状态及网络连通性  \n\n建议及时恢复该实例服务，保证集群 API 服务稳定。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "up{job=\"apiserver\"} == 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Server 请求压力告警",
+    "note": "集群 {{ $labels.cluster }} 中 Apiserver 请求压力异常\n\n**📌 检测指标信息**  \n▸ 当前告警值（匹配条件）：`{{ $value }}`  \n▸ 触发条件：1小时和5分钟的请求压力率均大于 0.144\n\n**📍 影响分析**  \n✓ API 请求压力激增，可能超出容错阈值  \n✓ 服务稳定性下降，可能导致部分请求失败  \n✓ 建议检查 Apiserver 的访问来源、QPS 限制及调用频率  \n\n请及时评估请求模式，并采取限流或扩容措施。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum by(cluster) (apiserver_request:burnrate1h) > 0.144 and sum by(cluster) (apiserver_request:burnrate5m) > 0.144",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Server 请求失败率异常",
+    "note": "集群 {{ $labels.cluster }} 中 Apiserver 请求终止比例过高\n\n**📌 检测指标信息**  \n▸ 请求终止比例：`{{ printf \"%.2f\" $value }}%` (> 20%)  \n▸ 触发条件：最近10分钟内请求终止比例超过 20%  \n\n**📍 影响分析**  \n✓ 高请求终止比例可能导致 API 请求频繁失败或中断  \n✓ 可能影响集群资源调度和正常业务请求  \n✓ 可能由 Apiserver 负载过高、网络故障或配置异常引起  \n✓ 建议检查 Apiserver 负载、日志及网络状况  \n\n请尽快排查问题，保障 API Server 稳定运行。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  sum by(cluster) (rate(apiserver_request_terminations_total{job=\"apiserver\"}[10m]))  \n  / \n  (\n    sum by(cluster) (rate(apiserver_request_total{job=\"apiserver\"}[10m])) \n    + \n    sum by(cluster) (rate(apiserver_request_terminations_total{job=\"apiserver\"}[10m]))\n  )\n) * 100 > 20",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Service 健康状态异常",
+    "note": "APIService {{ $labels.name }} 在命名空间 {{ $labels.namespace }} 的不可用次数异常\n\n**📌 检测指标信息**  \n▸ APIService 名称：`{{ $labels.name }}`  \n▸ 命名空间：`{{ $labels.namespace }}`  \n▸ 集群：`{{ $labels.cluster }}`  \n▸ 10 分钟内不可用次数：`{{ $value }}` 次  \n▸ 触发条件：10 分钟内不可用次数超过 4 次  \n\n**📍 影响分析**  \n✓ APIService 不可用可能导致集群部分功能受限  \n✓ 可能影响集群内相关资源的正常调度和管理  \n✓ 请排查 APIService 的健康状况及网络连通性  \n✓ 检查对应服务的日志和资源状态  \n\n建议及时处理，确保集群稳定运行。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum by(name, namespace, cluster)(increase(aggregator_unavailable_apiservice_total[10m])) > 4",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes API Service 可用性异常",
+    "note": "APIService {{ $labels.name }} 在命名空间 {{ $labels.namespace }} 的可用率低于 85%\n\n**📌 检测指标信息**  \n▸ APIService 名称：`{{ $labels.name }}`  \n▸ 命名空间：`{{ $labels.namespace }}`  \n▸ 最近10分钟最大可用率：`{{ printf \"%.2f\" ($value) }}%` (< 85%)  \n▸ 触发条件：APIService 最近10分钟最大可用率低于85%  \n\n**📍 影响分析**  \n✓ APIService 可用率不足可能导致部分集群功能异常  \n✓ 影响 API 请求的稳定性和正常调度  \n✓ 可能由网络问题、服务故障或资源压力引起  \n✓ 建议检查对应 APIService 组件的健康状态和日志  \n\n请尽快排查并恢复 APIService 的正常服务。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(1 - max by(name, namespace, cluster)(avg_over_time(aggregator_unavailable_apiservice[10m]))) * 100 < 85",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes DaemonSet 状态异常且长时间无更新告警",
+    "note": "{{$labels.namespace}} 命名空间中的 DaemonSet `{{$labels.daemonset}}` 状态异常，且最近 5 分钟内无更新行为\n\n**📌 检测指标信息**  \n▸ DaemonSet 名称：`{{$labels.daemonset}}`  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 当前调度数：`{{$labels.kube_daemonset_status_current_number_scheduled}}`  \n▸ 期望调度数：`{{$labels.kube_daemonset_status_desired_number_scheduled}}`  \n▸ 可用副本数：`{{$labels.kube_daemonset_status_number_available}}`  \n▸ Misscheduled 数：`{{$labels.kube_daemonset_status_number_misscheduled}}`  \n\n**📍 影响分析**  \n✓ DaemonSet 无法在所有节点正常运行  \n✓ 有可能存在节点状态异常或资源不足  \n✓ 应用可能无法提供完整的服务或日志采集异常  \n✓ 且 5 分钟内无任何更新操作，问题可能已卡住  \n\n请检查节点状态与 DaemonSet 控制器日志，确认是否为资源不足、节点异常或调度失败导致。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  (\n    kube_daemonset_status_current_number_scheduled{job=\"kube-state-metrics\"}\n     !=\n    kube_daemonset_status_desired_number_scheduled{job=\"kube-state-metrics\"}\n  ) or (\n    kube_daemonset_status_number_misscheduled{job=\"kube-state-metrics\"}\n     !=\n    0\n  ) or (\n    kube_daemonset_status_updated_number_scheduled{job=\"kube-state-metrics\"}\n     !=\n    kube_daemonset_status_desired_number_scheduled{job=\"kube-state-metrics\"}\n  ) or (\n    kube_daemonset_status_number_available{job=\"kube-state-metrics\"}\n     !=\n    kube_daemonset_status_desired_number_scheduled{job=\"kube-state-metrics\"}\n  )\n) and (\n  changes(kube_daemonset_status_updated_number_scheduled{job=\"kube-state-metrics\"}[5m])\n    ==\n  0\n)",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 1,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes Deployment 更新未完成",
+    "note": "{{$labels.namespace}} / {{$labels.deployment}} Deployment 更新未完成\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ Deployment 名称：`{{$labels.deployment}}`  \n▸ 触发条件：ObservedGeneration 与 Metadata Generation 不一致\n\n**📍 影响分析**  \n✓ Deployment 更新可能卡住，应用无法及时上线新版本  \n✓ 可能存在滚动更新失败或控制器异常  \n✓ 建议检查 Controller Manager 日志与 Pod 状态\n\n请尽快确认 Deployment 更新状态，确保系统功能不受影响。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "kube_deployment_status_observed_generation{job=\"kube-state-metrics\"}\n  !=\nkube_deployment_metadata_generation{job=\"kube-state-metrics\"}",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes Pod 状态异常（Pending/Unknown）",
+    "note": "{{$labels.pod}} Pod 状态异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ Pod 名称：`{{$labels.pod}}`  \n▸ 当前状态：`Pending` 或 `Unknown`  \n▸ 触发条件：Pod 状态为 Pending/Unknown，且持续存在\n\n**📍 影响分析**  \n✓ Pod 可能因调度失败、资源不足或节点异常而无法运行  \n✓ Pending 说明 Pod 未被成功调度到节点  \n✓ Unknown 可能为 Kubelet 失联或 API Server 状态获取异常  \n✓ 若持续异常，应检查调度策略、节点状态、网络连接等\n\n请及时排查该 Pod 的状态与所属控制器资源情况。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum by (namespace, pod, cluster) (\n  max by(namespace, pod, cluster) (\n    kube_pod_status_phase{job=\"kube-state-metrics\", phase=~\"Pending|Unknown\"}\n  ) * on(namespace, pod, cluster) group_left(owner_kind) topk by(namespace, pod, cluster) (\n    1, max by(namespace, pod, owner_kind, cluster) (kube_pod_owner{owner_kind!=\"Job\"})\n  )\n) > 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes Pod 频繁重启告警",
+    "note": "{{$labels.namespace}} / {{$labels.pod}} 容器 {{$labels.container}} 状态异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ Pod 名称：`{{$labels.pod}}`  \n▸ 容器名称：`{{$labels.container}}`  \n▸ 异常状态：`CrashLoopBackOff`  \n▸ 触发条件：5 分钟内容器处于 CrashLoopBackOff 状态次数 ≥ 3\n\n**📍 影响分析**  \n✓ 容器持续崩溃，可能导致服务无法正常启动  \n✓ 问题可能由启动命令错误、配置异常、资源限制等引起  \n✓ 若容器频繁重启，将对集群资源造成浪费并影响服务可用性\n\n请尽快查看容器日志 `kubectl logs {{$labels.pod}} -n {{$labels.namespace}} -c {{$labels.container}}` 排查根因。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "max_over_time(kube_pod_container_status_waiting_reason{reason=\"CrashLoopBackOff\", job=\"kube-state-metrics\"}[5m]) >= 3",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes PVC 存储空间即将耗尽",
+    "note": "持久卷 PVC 空间不足，可能影响服务正常运行\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{ $labels.namespace }}`  \n▸ PVC 名称：`{{ $labels.persistentvolumeclaim }}`  \n▸ 节点：`{{ $labels.node }}`  \n▸ 当前可用比例：`{{ $value }}`  \n▸ 触发条件：可用空间占比低于 3%，且卷为可写并未设置忽略告警标签\n\n**📍 影响分析**  \n✓ 持久卷可用空间即将耗尽，写入操作可能失败  \n✓ 应用可能因为磁盘不足出现错误或崩溃  \n✓ 若卷为状态组件（如数据库），风险更大  \n\n请及时扩容 PVC 或清理无效数据，避免服务异常。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  kubelet_volume_stats_available_bytes{job=\"kubelet\"}\n    /\n  kubelet_volume_stats_capacity_bytes{job=\"kubelet\"}\n) < 0.03\nand\nkubelet_volume_stats_used_bytes{job=\"kubelet\"} > 0\nunless on(namespace, persistentvolumeclaim, cluster)\nkube_persistentvolumeclaim_access_mode{ access_mode=\"ReadOnlyMany\"} == 1\nunless on(namespace, persistentvolumeclaim, cluster)\nkube_persistentvolumeclaim_labels{label_excluded_from_alerts=\"true\"} == 1",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes StatefulSet 副本未就绪且更新卡顿",
+    "note": "{{$labels.namespace}} / {{$labels.statefulset}} StatefulSet 副本异常\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{$labels.namespace}}`  \n▸ StatefulSet 名称：`{{$labels.statefulset}}`  \n▸ 当前就绪副本数：`{{$value}}`（少于期望值）  \n▸ 触发条件：副本未全部就绪，且 10 分钟内无更新变动\n\n**📍 影响分析**  \n✓ StatefulSet 中部分副本未准备就绪，服务可能部分不可用  \n✓ 更新过程可能异常中断或阻塞  \n✓ 建议检查 Pod 状态、节点资源与 StatefulSet 滚动策略配置\n\n请及时排查相关 StatefulSet 的 Pod 状态与控制器日志。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  kube_statefulset_status_replicas_ready{job=\"kube-state-metrics\"}\n    !=\n  kube_statefulset_status_replicas{job=\"kube-state-metrics\"}\n) and (\n  changes(kube_statefulset_status_replicas_updated{job=\"kube-state-metrics\"}[10m])\n    ==\n  0\n)",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 容器 CPU 被限速比例过高",
+    "note": "容器 CPU 被频繁限速，可能影响应用性能\n\n**📌 检测指标信息**  \n▸ 命名空间：`{{ $labels.namespace }}`  \n▸ Pod 名称：`{{ $labels.pod }}`  \n▸ 容器名称：`{{ $labels.container }}`  \n▸ 当前限速比：`{{ $value }}`  \n▸ 触发条件：容器 CPU 被限速比例 > 65%（5分钟内）\n\n**📍 影响分析**  \n✓ 容器请求 CPU 不足，容易被频繁限速，影响业务延迟和响应  \n✓ 节点 CPU 压力过大，或容器设置的 CPU 限额不合理  \n✓ 应用在突发时无法获取足够资源，性能下降明显\n\n建议检查容器的 CPU request/limit 设置，评估是否需要资源扩容或优化应用线程/资源使用策略。",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum(increase(container_cpu_cfs_throttled_periods_total{container!=\"\", }[5m])) by (container, pod, namespace, cluster)\n  /\nsum(increase(container_cpu_cfs_periods_total{}[5m])) by (container, pod, namespace, cluster)\n  > ( 65 / 100 )",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 控制器组件离线",
+    "note": "Kubernetes 控制器管理器组件未运行或失联\n\n**📌 检测指标信息**  \n▸ 组件名称：`kube-controller-manager`  \n▸ 探测方式：Prometheus `up` 指标缺失或不为 1  \n▸ 触发条件：该组件所有实例未上报或不可用\n\n**📍 影响分析**  \n✓ 控制器管理器负责核心控制循环（如副本数控制、节点管理、PV 绑定等）  \n✓ 若组件失联，可能导致资源无法自动调节、无法新建副本或释放资源  \n✓ 常见原因包括组件 Crash、Pod 被驱逐、服务端口未暴露、Prometheus 拉取失败\n\n请检查组件是否正常运行：\n\n```bash\nkubectl get pods -n kube-system -l component=kube-controller-manager\n```",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "absent(up{job=\"kube-controller-manager\"} == 1)",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 节点 Pod 数接近调度上限告警",
+    "note": "{{$labels.node}} 节点 Pod 使用率过高\n\n**📌 检测指标信息**  \n▸ 节点名称：`{{$labels.node}}`  \n▸ 当前 Pod 使用率：`{{$value}}`（数值范围：0~1 对应 0%~100%）  \n▸ 触发条件：节点 Pod 使用率大于 0.95(95%)\n\n**📍 影响分析**  \n✓ 节点即将达到 Pod 调度上限，可能导致新 Pod 无法调度  \n✓ 建议扩容节点或重新调度 Pod 分布，缓解调度压力",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "count by(node, cluster) (\n  (kube_pod_status_phase{job=\"kube-state-metrics\",phase=\"Running\"} == 1) * on(instance,pod,namespace,cluster) group_left(node) topk by(instance,pod,namespace,cluster) (1, kube_pod_info{job=\"kube-state-metrics\"})\n)\n/\nmax by(node, cluster) (\n  kube_node_status_capacity{job=\"kube-state-metrics\",resource=\"pods\"} != 1\n) > 0.95",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 节点不可达（Unreachable）告警",
+    "note": "Kubernetes 节点处于 Unreachable 状态（不可达）\n\n**📌 检测指标信息**  \n▸ 节点名称：`{{$labels.node}}`  \n▸ Taint 状态：`node.kubernetes.io/unreachable:NoSchedule`  \n▸ 触发条件：节点被标记为 unreachable，且不属于计划性下线场景\n\n**📍 影响分析**  \n✓ 节点可能已经宕机或与控制平面失去联系  \n✓ Pod 无法调度到该节点，现有 Pod 可能卡死或等待驱逐  \n✓ 可能由于网络异常、电源故障、Kubelet 崩溃等问题引起\n\n请立即检查节点连接状况，并根据情况决定是否驱逐或恢复该节点：\nkubectl describe node {{$labels.node}}\nkubectl get pods -o wide --all-namespaces | grep {{$labels.node}}",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "(\n  kube_node_spec_taint{job=\"kube-state-metrics\", key=\"node.kubernetes.io/unreachable\", effect=\"NoSchedule\"}\n  unless ignoring(key,value)\n  kube_node_spec_taint{\n    job=\"kube-state-metrics\",\n    key=~\"ToBeDeletedByClusterAutoscaler|cloud.google.com/impending-node-termination|aws-node-termination-handler/spot-itn\"\n  }\n) == 1",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 节点状态频繁变更",
+    "note": "{{$labels.node}} 节点 Ready 状态频繁波动\n\n**📌 检测指标信息**  \n▸ 节点名称：`{{$labels.node}}`  \n▸ 状态变动次数：`{{$value}}` 次（近 15 分钟）  \n▸ 触发条件：状态变动次数大于 2 次\n\n**📍 影响分析**  \n✓ 节点状态不稳定，可能频繁掉线又恢复  \n✓ Pod 可能不断迁移或重建，影响业务稳定性  \n✓ 网络中断、内核宕机、Kubelet 崩溃等可能原因  \n\n建议立即检查该节点系统日志、Kubelet 状态、网络连通性等：\nkubectl describe node {{$labels.node}}\njournalctl -u kubelet\nping <apiserver> -I <node-ip>",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum(changes(kube_node_status_condition{status=\"true\", condition=\"Ready\"}[15m])) by (node, cluster) > 2",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 调度器组件探测失败",
+    "note": "Kubernetes 调度器组件不可用或无数据上报\n\n**📌 检测指标信息**  \n▸ 组件名称：`kube-scheduler`  \n▸ 探测方式：Prometheus `up == 1` 状态缺失  \n▸ 触发条件：所有 kube-scheduler 实例未上报监控数据或状态异常\n\n**📍 影响分析**  \n✓ kube-scheduler 是 Kubernetes 的核心调度组件，负责将 Pod 分配到合适的节点  \n✓ 若调度器离线，将导致新建 Pod 无法分配节点，影响应用正常部署  \n✓ 可能原因包括组件 Crash、Pod 被驱逐、网络异常或监控端口未暴露\n\n请立即执行如下命令检查组件状态：\nkubectl get pods -n kube-system -l component=kube-scheduler",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "absent(up{job=\"kube-scheduler\"} == 1)",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Kubernetes 集群节点状态异常（NotReady）",
+    "note": "Kubernetes 节点未就绪（NotReady）\n\n**📌 检测指标信息**  \n▸ 节点名称：`{{$labels.node}}`  \n▸ 当前状态：NotReady  \n▸ 触发条件：kube_node_status_condition == 0（Ready 状态为 false）\n\n**📍 影响分析**  \n✓ 节点处于 NotReady 状态，调度器将不再分配 Pod 到该节点  \n✓ 已运行的 Pod 可能会驱逐或被迁移  \n✓ 原因可能包括：Kubelet 宕机、网络异常、磁盘满、心跳超时等\n\n建议尽快通过以下命令排查节点状态：\nkubectl describe node {{$labels.node}}",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 30,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "kube_node_status_condition{job=\"kube-state-metrics\", condition=\"Ready\", status=\"true\"} == 0",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 30s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Pod内存使用过高",
+    "note": "容器 {{$labels.container}} 内存使用过高\n\n**📌 检测指标信息**\n▸ 命名空间：`{{$labels.namespace}}`  \n▸ 节点：`{{$labels.node}}`  \n▸ Pod 名称：`{{$labels.pod}}`  \n▸ 容器名称：`{{$labels.container}}`  \n▸ 当前内存使用量：{{ printf \"%.2f\" $value }} GB  \n▸ 触发条件：内存使用超过 16 GB\n\n**📍 影响分析**  \n✓ 容器内存占用过高，可能导致节点内存压力增大  \n✓ 高内存消耗可能引发容器重启或 OOM Kill  \n✓ 需检查应用内存泄漏或异常内存增长  \n\n请及时分析容器内存使用情况，优化资源配置或排查内存泄漏",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "max (container_memory_working_set_bytes{container !=\"\",container!=\"POD\"}) by (container, pod,node,namespace) / 1073741824 > 16",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "APP=Kubernetes"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 1,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

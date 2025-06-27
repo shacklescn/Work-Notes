@@ -1,0 +1,554 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd Leader 选举异常告警",
+    "note": "{{$labels.instance}} etcd 节点未选出 Leader\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前状态：无 Leader (etcd_server_has_leader = 0)  \n▸ 触发条件：etcd 节点未选出 Leader\n\n**📍 影响分析**  \n✓ etcd 集群缺少 Leader，写操作将被阻塞，导致集群不可用  \n✓ 依赖 etcd 的服务可能出现故障，如 Kubernetes API 服务异常  \n✓ 可能由于网络分区、节点故障或配置异常导致 Leader 选举失败  \n\n请检查 etcd 节点状态、网络连接及日志，确保 Leader 正常选举",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "etcd_server_has_leader{job=~\".*etcd.*\"} == 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd Leader 频繁切换告警",
+    "note": "etcd 集群 Leader 频繁切换告警\n\n**📌 检测指标信息**  \n▸ 过去 15 分钟 Leader 切换次数：{{ printf \"%.0f\" $value }}  \n▸ 触发条件：Leader 切换次数 ≥ 4 次\n\n**📍 影响分析**  \n✓ Leader 频繁切换可能导致 etcd 集群不稳定，影响写入操作性能  \n✓ 可能引发服务中断、数据一致性风险  \n✓ 可能由网络抖动、节点负载过高或硬件故障引起  \n\n请排查 etcd 节点负载、网络状况及相关日志，保障集群稳定性",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "increase((max without (instance) (etcd_server_leader_changes_seen_total{job=~\".*etcd.*\"}) or 0*absent(etcd_server_leader_changes_seen_total{job=~\".*etcd.*\"}))[15m:1m]) >= 4",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd WAL fsync 延迟过高告警（P99）",
+    "note": "etcd WAL 日志落盘延迟升高（P99）\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前 WAL 落盘延迟 P99：{{ printf \"%.3f\" $value }} 秒  \n▸ 触发条件：fsync P99 延迟超过 0.5 秒（5 分钟窗口）\n\n**📍 影响分析**  \n✓ WAL 是 etcd 写入一致性的核心机制，fsync 延迟升高将严重影响写入性能  \n✓ 可能因磁盘 I/O 抖动、设备故障、负载过高等引起  \n✓ 写入延迟高可能导致 Kubernetes 等依赖组件超时或状态不一致  \n\n请立即检查节点磁盘负载、I/O 性能，排查可能的写入瓶颈或系统负载异常",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=~\".*etcd.*\"}[5m])) > 0.5",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd WAL 日志 fsync 延迟过高告警（P99）",
+    "note": "etcd WAL 日志落盘延迟异常升高（P99）\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前 WAL 落盘延迟 P99：{{ printf \"%.3f\" $value }} 秒  \n▸ 触发条件：fsync P99 延迟超过 1 秒（5 分钟窗口）\n\n**📍 影响分析**  \n✓ WAL fsync 延迟过高，可能严重影响 etcd 写入性能和系统响应  \n✓ 导致 etcd 写操作阻塞，Kubernetes 等组件可能出现 API 延迟或超时  \n✓ 可能原因包括磁盘 I/O 瓶颈、硬件故障、系统负载过高等\n\n请及时排查磁盘健康状况、I/O 性能指标及系统资源使用情况",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=~\".*etcd.*\"}[5m])) > 1",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 写入事务异常告警",
+    "note": "etcd 提议提交失败速率过高\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前失败速率：{{ printf \"%.2f\" $value }} 次/秒  \n▸ 触发条件：15 分钟内提议提交失败速率超过 5 次/秒  \n▸ 指标：`etcd_server_proposals_failed_total`\n\n**📍 影响分析**  \n✓ etcd 节点可能无法正常写入，严重影响 Kubernetes 配置同步  \n✓ 高失败率可能由磁盘 I/O 问题、网络分区、leader 异常等引起  \n✓ Kubernetes 控制面组件可能因此超时或报错  \n\n请立即检查 etcd 节点状态、磁盘性能、网络链路，并关注 etcd 日志中的错误详情",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "rate(etcd_server_proposals_failed_total{job=~\".*etcd.*\"}[15m]) > 5",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 后端提交延迟过高告警（P99）",
+    "note": "etcd 后端事务提交延迟升高（P99）\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前事务提交延迟 P99：{{ printf \"%.3f\" $value }} 秒  \n▸ 触发条件：etcd backend commit 操作 P99 延迟超过 0.25 秒（5 分钟窗口）\n\n**📍 影响分析**  \n✓ etcd 后端写入性能下降，可能导致事务写慢、响应超时  \n✓ Kubernetes 等依赖 etcd 的系统可能出现配置变更延迟  \n✓ 潜在原因包括磁盘写入压力过大、系统负载高、文件系统异常等\n\n建议检查 etcd 节点磁盘性能、I/O 延迟、系统负载情况，并关注是否存在频繁写操作或资源抢占",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket{job=~\".*etcd.*\"}[5m])) > 0.25",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 响应异常比例超阈值",
+    "note": "etcd 节点异常 gRPC 请求比例过高\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 异常请求占比：{{ printf \"%.2f\" $value }}%  \n▸ 触发条件：异常 gRPC 请求比例超过 5%  \n▸ 异常码类型：Unknown、FailedPrecondition、ResourceExhausted、Internal、Unavailable、DataLoss、DeadlineExceeded  \n\n**📍 影响分析**  \n✓ etcd 返回大量异常状态码可能导致客户端调用失败  \n✓ 间歇性或持续性的错误会影响 Kubernetes 等系统的稳定性  \n✓ 可能由磁盘 I/O、内存、网络抖动或 etcd 压力过高引起  \n\n请立即检查 etcd 节点日志、系统资源和网络状况，及时排查异常请求来源",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "100 * sum(rate(grpc_server_handled_total{job=~\".*etcd.*\", grpc_code=~\"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded\"}[5m])) without (grpc_type, grpc_code)\n/\nsum(rate(grpc_server_handled_total{job=~\".*etcd.*\"}[5m])) without (grpc_type, grpc_code)\n> 5",
+          "severity": 1,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 存储配额即将耗尽告警",
+    "note": "etcd 后端存储预计将 4 小时后写满\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前存储使用量：不可用（预测）  \n▸ 存储配额限制：不可用（静态）  \n▸ 触发条件：根据过去 4 小时增长趋势，预计 4 小时后将超过配额限制\n\n**📍 影响分析**  \n✓ 一旦 etcd 后端写满，将无法写入新数据，导致 Kubernetes 等依赖组件失效  \n✓ 可能引起节点漂移、API 超时、配置无法保存等严重后果  \n✓ 快速增长通常由频繁写操作、大量事件、或资源清理不及时引起\n\n建议立即检查 etcd 数据库使用增长趋势，启用 compaction 清理机制，或适当扩大后端配额限制",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "predict_linear(etcd_mvcc_db_total_size_in_bytes[4h], 4*60*60) > etcd_server_quota_backend_bytes",
+          "severity": 3,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 服务异常请求率过高",
+    "note": "etcd 节点 gRPC 异常请求比例过高\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 异常请求占比：{{ printf \"%.2f\" $value }}%  \n▸ 触发条件：异常 gRPC 请求占比超过 1%\n\n**📍 影响分析**  \n✓ gRPC 异常请求增多可能导致 etcd 服务响应异常  \n✓ 可能引发集群性能下降或数据同步失败  \n✓ 可能由网络问题、资源耗尽、配置错误或节点异常引起  \n\n请检查 etcd 服务日志、节点负载及网络状况，及时排查并处理异常请求",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "100 * sum(rate(grpc_server_handled_total{job=~\".*etcd.*\", grpc_code=~\"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded\"}[5m])) without (grpc_type, grpc_code)\n  /\nsum(rate(grpc_server_handled_total{job=~\".*etcd.*\"}[5m])) without (grpc_type, grpc_code)\n  > 1",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 节点存活状态异常",
+    "note": "etcd 集群检测到节点异常或通信失败\n\n**📌 检测指标信息**  \n▸ 触发条件：  \n - 存在 etcd 实例宕机（up = 0）  \n - 或 etcd 节点间通信存在失败（peer_sent_failures > 0.01）  \n▸ 当前异常值：`{{ printf \"%.0f\" $value }}`\n\n**📍 影响分析**  \n✓ etcd 是集群服务发现与配置中心，任一节点异常可能影响主从选举  \n✓ 网络通信失败可能导致数据不一致、选主重试、写入失败等问题  \n✓ 多个节点异常将严重影响 Kubernetes、Prometheus 等依赖服务的可用性  \n\n建议立即检查 etcd 节点运行状态、网络连通性、磁盘和 CPU 使用情况，确保集群高可用",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "max without (endpoint) (\n  sum without (instance) (up{job=~\".*etcd.*\"} == bool 0)\nor\n  count without (To) (\n    sum without (instance) (rate(etcd_network_peer_sent_failures_total{job=~\".*etcd.*\"}[120s])) > 0.01\n  )\n)\n> 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 节点数量不足告警",
+    "note": "etcd 集群多数节点失联，集群可能不可用\n\n**📌 检测指标信息**  \n▸ 当前存活节点数：{{ printf \"%.0f\" $value }}  \n▸ 触发条件：存活节点数少于 etcd 集群半数节点数\n\n**📍 影响分析**  \n✓ etcd 集群失去多数节点，无法完成选主，集群服务不可用  \n✓ 依赖 etcd 的上层组件（如 Kubernetes）可能出现服务异常  \n✓ 需尽快排查节点状态和网络问题，恢复集群多数节点  \n\n请尽快检查 etcd 节点状态和网络连通性，保障集群高可用",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "sum(up{job=~\".*etcd.*\"} == bool 1) without (instance) < ((count(up{job=~\".*etcd.*\"}) without (instance) + 1) / 2)",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 0,
+        "op": "in",
+        "values": [
+          1
+        ]
+      }
+    ],
+    "name": "Etcd 节点间网络延迟过高告警",
+    "note": "etcd 节点间网络延迟异常升高（99 分位）\n\n**📌 检测指标信息**  \n▸ 节点实例：`{{$labels.instance}}`  \n▸ 当前 99 分位网络延迟：{{ printf \"%.3f\" $value }} 秒  \n▸ 触发条件：etcd 网络往返延迟（RTT）超过 0.15 秒\n\n**📍 影响分析**  \n✓ 网络延迟升高会影响 etcd 节点间同步  \n✓ 可能导致 leader 选举频繁、写入变慢  \n✓ 可由网络抖动、带宽占用、物理链路问题引起\n\n请排查节点间网络质量（延迟、丢包、带宽），并检查 etcd 日志是否存在 leader 变更等异常",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "histogram_quantile(0.99, rate(etcd_network_peer_round_trip_time_seconds_bucket{job=~\".*etcd.*\"}[5m])) > 0.15",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=Etcd"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

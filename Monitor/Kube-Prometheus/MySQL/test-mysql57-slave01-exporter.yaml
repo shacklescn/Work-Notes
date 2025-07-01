@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-mysql57-slave01-exporter
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: test-mysql57-slave01-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-mysql57-slave01-exporter
+  template:
+    metadata:
+      labels:
+        app: test-mysql57-slave01-exporter
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: test-mysql57-slave01-exporter
+          image: swr.cn-south-1.myhuaweicloud.com/starsl.cn/mysqld_exporter:latest
+          args:
+            - "--collect.info_schema.innodb_metrics"
+            - "--collect.info_schema.tables"
+            - "--collect.info_schema.processlist"
+            - "--collect.info_schema.tables.databases=*"
+            - "--mysqld.username=root"
+            - "--mysqld.address=10.84.3.46:3306"
+          env:
+            - name: MYSQLD_EXPORTER_PASSWORD
+              value: "Seca@2024..."
+          ports:
+            - containerPort: 9104
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 800m
+              memory: 128Mi
+          volumeMounts:
+            - name: tz-config
+              mountPath: /etc/localtime
+              readOnly: true
+      volumes:
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/PRC
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-mysql57-slave01-exporter
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: test-mysql57-slave01-exporter
+spec:
+  selector:
+    app: test-mysql57-slave01-exporter
+  ports:
+    - name: test-mysql57-slave01-exporter
+      protocol: TCP
+      port: 9104
+      targetPort: 9104
+  type: ClusterIP

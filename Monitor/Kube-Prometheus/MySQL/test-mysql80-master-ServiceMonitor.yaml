@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: test-mysql80-master-servicemonitor
+  namespace: kubesphere-monitoring-system
+spec:
+  selector:
+    matchLabels:
+      app: test-mysql80-master-exporter
+  #namespaceSelector:
+  #  matchNames:
+  #    - kubesphere-monitoring-system
+  endpoints:
+    - port: test-mysql80-master-exporter
+      path: /metrics
+      interval: 15s
+      scheme: http

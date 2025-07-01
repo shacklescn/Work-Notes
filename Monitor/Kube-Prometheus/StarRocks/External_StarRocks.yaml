@@ -1,0 +1,103 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: jsj-starrocks-secret
+  namespace: kubesphere-monitoring-system
+data:
+  password: MjZnYUdIVERaVXBuczdHUg==
+  username: cm9vdA==
+type: Opaque
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  labels:
+    k8s-app: jsj-starrocks
+  name: jsj-starrocks
+  namespace: kubesphere-monitoring-system
+subsets:
+- addresses:
+  - ip: 10.84.0.12
+  - ip: 10.84.91.16
+  - ip: 10.84.91.18
+  ports:
+  - name: fe-metrics
+    port: 8030
+    protocol: TCP
+  - name: be-metrics
+    port: 8040
+    protocol: TCP
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: jsj-starrocks
+  namespace: kubesphere-monitoring-system
+  labels:
+    k8s-app: jsj-starrocks
+spec:
+  ports:
+    - name: fe-metrics
+      protocol: TCP
+      port: 8030
+      targetPort: 8030
+    - name: be-metrics
+      protocol: TCP
+      port: 8040
+      targetPort: 8040
+  type: ClusterIP
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: jsj-starrocks-fe
+  name: jsj-starrocks-fe
+  namespace: kubesphere-monitoring-system
+spec:
+  endpoints:
+    - interval: 10s
+      path: /metrics
+      port: fe-metrics
+      scheme: http
+      basicAuth:
+        username:
+          key: username
+          name: jsj-starrocks-secret
+        password:
+          key: password
+          name: jsj-starrocks-secret
+  namespaceSelector:
+    matchNames:
+      - kubesphere-monitoring-system
+  selector:
+    matchLabels:
+      k8s-app: jsj-starrocks
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: jsj-starrocks
+  name: jsj-starrocks-be
+  namespace: kubesphere-monitoring-system
+spec:
+  endpoints:
+    - interval: 10s
+      path: /metrics
+      port: be-metrics
+      scheme: http
+      basicAuth:
+        username:
+          key: username
+          name: jsj-starrocks-secret
+        password:
+          key: password
+          name: jsj-starrocks-secret
+  namespaceSelector:
+    matchNames:
+      - kubesphere-monitoring-system
+  selector:
+    matchLabels:
+      k8s-app: jsj-starrocks

@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: test-mysql57-slave02-servicemonitor
+  namespace: kubesphere-monitoring-system
+spec:
+  selector:
+    matchLabels:
+      app: test-mysql57-slave02-exporter
+  #namespaceSelector:
+  #  matchNames:
+  #    - kubesphere-monitoring-system
+  endpoints:
+    - port: test-mysql57-slave02-exporter
+      path: /metrics
+      interval: 15s
+      scheme: http

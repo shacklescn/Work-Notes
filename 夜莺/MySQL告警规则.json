@@ -1,0 +1,222 @@
+[
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 2,
+        "op": "in",
+        "values": []
+      }
+    ],
+    "name": "MySQL 从库 SQL 线程未运行",
+    "note": "MySQL 从库 SQL 线程未运行\n\n**📌 检测指标信息**\n▸ 实例：`{{$labels.endpoint}}`\n▸ 当前状态：停止 (Slave_SQL_Running = 0)\n▸ 监控指标：mysql_slave_status_slave_sql_running\n\n**📍 影响分析**\n✓ 从库已停止执行 Relay Log 中的 SQL\n✓ 主从数据不会继续同步\n✓ 可能引起数据不一致或延迟",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 1,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "mysql_slave_status_slave_sql_running == 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=MySQL"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 1,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 15s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 2,
+        "op": "in",
+        "values": []
+      }
+    ],
+    "name": "MySQL 从库延迟大于30秒",
+    "note": "MySQL 从库复制延迟达到30秒以上\n\n**📌 检测指标信息**\n▸ 实例：`{{$labels.instance}}`\n▸ 当前延迟：`{{$value}}` 秒\n▸ 监控指标：mysql_slave_status_sql_delay\n\n**📍 影响分析**\n✓ 从库与主库数据延迟 30 秒\n✓ 可能影响读取一致性或延迟敏感业务\n\n**🛠 处理建议**\n1. 登录从库执行 `SHOW SLAVE STATUS\\\\G`\n2. 检查 `Seconds_Behind_Master` 字段\n3. 查看网络和 IO 状况\\n4. 确认主库负载是否过高\n5. 根据需要优化复制或扩容\"",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "mysql_slave_status_sql_delay >= 30",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=MySQL"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 2,
+        "op": "in",
+        "values": []
+      }
+    ],
+    "name": "MySQL 慢查询数量过多",
+    "note": "**📌 检测指标信息**\n▸ 实例：`{{$labels.endpoint}}`\n▸ 当前慢查询速率：`{{ humanize $value }}` 条/秒\n▸ 触发阈值：3条/秒\n\n**📍 影响分析**\n✓ 数据库存在大量慢查询，可能导致性能下降\n✓ 可能由索引缺失、数据量膨胀、SQL不合理等原因引起\n✓ 若持续增长，可能引发应用超时",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "rate(mysql_global_status_slow_queries[5m]) > 3",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=MySQL"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 2,
+        "op": "in",
+        "values": []
+      }
+    ],
+    "name": "MySQL 活跃连接数过高",
+    "note": "**📌 检测指标信息**\n▸ 实例：`{{$labels.endpoint}}`\n▸ 当前活跃连接数：`{{ humanize $value }}`\n▸ 触发阈值：300\n\n**📍 影响分析**\n✓ MySQL连接数已接近或超过最大连接数\n✓ 可能会导致应用连接失败（\"Too many connections\"）\n✓ 可能由连接泄露、长事务、短时间流量暴增等原因导致",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 300,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "rate(mysql_global_status_threads_connected[5m]) > 300",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=MySQL"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 300s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  },
+  {
+    "cate": "prometheus",
+    "datasource_queries": [
+      {
+        "match_type": 2,
+        "op": "in",
+        "values": []
+      }
+    ],
+    "name": "MySQL服务不可用",
+    "note": "**📛 告警名称**\nMySQL 服务不可用\n\n**📌 检测指标信息**\n▸ 命名空间：`{{$labels.namespace}}`\n▸ Pod 名称：`{{$labels.pod}}`\n▸ 实例：`10.84.4.60:3306`\n▸ 服务：`{{$labels.service}}`\n▸ Exporter 状态：已正常运行\n▸ MySQL 实例状态：连接失败（mysql_up = 0）\n\n**📍 影响分析**\n✓ 无法采集 MySQL 性能指标（QPS、连接数、慢查询等）\n✓ 应用可能已无法访问数据库\n✓ 自动化告警与监控将失效",
+    "prod": "metric",
+    "delay": 0,
+    "prom_for_duration": 60,
+    "rule_config": {
+      "queries": [
+        {
+          "prom_ql": "mysql_up{} == 0",
+          "severity": 2,
+          "unit": "none"
+        }
+      ]
+    },
+    "event_relabel_config": null,
+    "prom_eval_interval": 15,
+    "enable_in_bg": 0,
+    "notify_recovered": 1,
+    "notify_repeat_step": 60,
+    "notify_max_number": 0,
+    "recover_duration": 0,
+    "callbacks": [],
+    "append_tags": [
+      "App=MySQL"
+    ],
+    "annotations": {},
+    "uuid": 0,
+    "cur_event_count": 0,
+    "update_by_nickname": "超管",
+    "cron_pattern": "@every 60s",
+    "notify_rule_ids": [
+      1
+    ],
+    "notify_version": 1
+  }
+]

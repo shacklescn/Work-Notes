@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Endpoints
+metadata:
+  labels:
+    k8s-app: starrocks-node-exporter
+  name: starrocks-node-exporter
+  namespace: kubesphere-monitoring-system
+subsets:
+- addresses:
+  - ip: 10.84.0.12
+  - ip: 10.84.91.16
+  - ip: 10.84.91.18
+  - ip: 10.84.0.106
+  - ip: 10.84.91.10
+  ports:
+  - name: metrics
+    port: 9100
+    protocol: TCP
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: starrocks-node-exporter
+  namespace: kubesphere-monitoring-system
+  labels:
+    k8s-app: starrocks-node-exporter
+spec:
+  ports:
+    - name: metrics
+      protocol: TCP
+      port: 9100
+      targetPort: 9100
+  type: ClusterIP
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: starrocks-node-exporter
+  name: starrocks-node-exporter
+  namespace: kubesphere-monitoring-system
+spec:
+  endpoints:
+    - interval: 10s
+      path: /metrics
+      port: metrics
+      scheme: http
+      basicAuth:
+        username:
+          key: username
+          name: starrocks-node-exporter-secret
+        password:
+          key: password
+          name: starrocks-node-exporter-secret
+  namespaceSelector:
+    matchNames:
+      - kubesphere-monitoring-system
+  selector:
+    matchLabels:
+      k8s-app: starrocks-node-exporter

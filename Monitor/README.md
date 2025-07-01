@@ -14,17 +14,35 @@ cd Work-Notes/Monitor/Kube-Prometheus
 ```
 ## 3、文件作用说明
 ```shell
-root@master3:~/Work-Notes/Monitor# ll
+root@master3:~/Work-Notes/Monitor/Kube-Prometheus# ll MySQL
 total 24
-drwxr-xr-x 2 root root 4096 Jun 24 13:34 ./
-drwxr-xr-x 6 root root 4096 Jun 26 10:20 ../
--rw-r--r-- 1 root root 1250 Jun 24 13:22 all_StarRocks_node_exporter.yaml
--rw-r--r-- 1 root root 2047 Jun 24 13:15 jsj_StarRocks_exporter.yaml
+-rw-r--r-- 1 root root 1782 Jun 30 15:57 test-mysql57-master-exporter.yaml
+-rw-r--r-- 1 root root  412 Jun 30 15:56 test-mysql57-master-ServiceMonitor.yaml
+-rw-r--r-- 1 root root 1791 Jun 30 15:59 test-mysql57-slave01-exporter.yaml
+-rw-r--r-- 1 root root  422 Jun 30 16:01 test-mysql57-slave01-ServiceMonitor.yaml
+-rw-r--r-- 1 root root 1791 Jun 30 16:09 test-mysql57-slave02-exporter.yaml
+-rw-r--r-- 1 root root  422 Jun 30 16:09 test-mysql57-slave02-ServiceMonitor.yaml
+-rw-r--r-- 1 root root 1782 Jun 30 16:24 test-mysql80-master-exporter.yaml
+-rw-r--r-- 1 root root  412 Jun 30 16:25 test-mysql80-master-ServiceMonitor.yaml
+-rw-r--r-- 1 root root 1791 Jun 30 16:27 test-mysql80-slave01-exporter.yaml
+-rw-r--r-- 1 root root  422 Jun 30 16:28 test-mysql80-slave01-ServiceMonitor.yaml
+-rw-r--r-- 1 root root 1791 Jun 30 16:33 test-mysql80-slave02-exporter.yaml
+-rw-r--r-- 1 root root  422 Jun 30 16:34 test-mysql80-slave02-ServiceMonitor.yaml
+
+root@master3:~/Work-Notes/Monitor/Kube-Prometheus# ll Node_Exporter
+total 1
+-rw-r--r-- 1 root root 1782 Jun 30 15:57 External_Node_Exporter.yaml
+
+
+root@master3:~/Work-Notes/Monitor/Kube-Prometheus# ll StarRocks
+total 1
+-rw-r--r-- 1 root root 1782 Jun 30 15:57 External_StarRocks.yaml
 ```
-| 文件名                  | 文件作用                |
-|----------------------|---------------------|
-| External_Node_Exporter | 监控k8s集群外部的Node_Exporter |
-| StarRocks.yaml    | 监控集群外部的StarRocks    |
+| 文件名             | 文件作用                              |
+|-----------------|-----------------------------------|
+| Node_Exporter目录 | 监控k8s集群外部的Node_Exporter           |
+| StarRocks目录     | 监控集群外部的StarRocks集群配置文件            |
+| MySQL目录         | 监控集群外部的MySQL5.7和MySQL8.0主从信息的配置文件 |
 ## 4、配置文件详解
 ### Node_Exporter篇
 ```yaml
@@ -219,4 +237,102 @@ Endpoints：在k8s中将外部服务定义为集群资源Endpoints
 
 Service：为Endpoints创建SVC
 
+ServiceMonitor:kube-prometheus提供的CRD,通过定义ServiceMonitor监控对应的SVC,来达到监控目的
+
+### mysqld_exporter篇
+mysqld_exporter分为个文件 
+- 第一个文件```test-mysql57-master-exporter.yaml```是部署mysqld_exporter Pod用于链接MySQL并暴露指标信息
+- 第二个文件```test-mysql57-master-ServiceMonitor.yaml```是kube-prometheus提供的CRD,通过定义ServiceMonitor监控对应的SVC,来达到监控目的
+
+文件名带master的文件是监控MySQL主服务的配置文件，文件中带slave的是监控MySQL从服务的文件
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-mysql57-master-exporter
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: test-mysql57-master-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-mysql57-master-exporter
+  template:
+    metadata:
+      labels:
+        app: test-mysql57-master-exporter
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: test-mysql57-master-exporter
+          image: swr.cn-south-1.myhuaweicloud.com/starsl.cn/mysqld_exporter:latest
+          args:
+            - "--collect.info_schema.innodb_metrics"
+            - "--collect.info_schema.tables"
+            - "--collect.info_schema.processlist"
+            - "--collect.info_schema.tables.databases=*"
+            - "--mysqld.username=root"
+            - "--mysqld.address=10.84.3.47:3306"
+          env:
+            - name: MYSQLD_EXPORTER_PASSWORD
+              value: "Seca@2024..."
+          ports:
+            - containerPort: 9104
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 800m
+              memory: 128Mi
+          volumeMounts:
+            - name: tz-config
+              mountPath: /etc/localtime
+              readOnly: true
+      volumes:
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/PRC
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-mysql57-master-exporter
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: test-mysql57-master-exporter
+spec:
+  selector:
+    app: test-mysql57-master-exporter
+  ports:
+    - name: test-mysql57-master-exporter
+      protocol: TCP
+      port: 9104
+      targetPort: 9104
+  type: ClusterIP
+```
+Deployment：部署mysqld_exporter Pod用于链接MySQL并暴露指标信息
+Service：为mysqld_exporter Pod创建服务配置
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: test-mysql57-master-servicemonitor
+  namespace: kubesphere-monitoring-system
+spec:
+  selector:
+    matchLabels:
+      app: test-mysql57-master-exporter 
+  #namespaceSelector:
+  #  matchNames:
+  #    - kubesphere-monitoring-system
+  endpoints:
+    - port: test-mysql57-master-exporter
+      path: /metrics
+      interval: 15s
+      scheme: http
+```
 ServiceMonitor:kube-prometheus提供的CRD,通过定义ServiceMonitor监控对应的SVC,来达到监控目的

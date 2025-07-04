@@ -24,6 +24,7 @@ cd Work-Notes/StarRocks存算一体/Deploy/
 ```shell
 bash StarRocks-init.sh
 ```
+脚本中的JDK文件是在 [oracle官网](https://www.oracle.com/java/technologies/downloads/#java11) 下载的，如果版本不一致导致的文件名不一样，可以将脚本自动中的变量修改成对应的名字即可
 # 安装LEADER StarRocks服务（LEADER节点操作）
 ## 1、安装并启动StarRocks服务
 ```shell

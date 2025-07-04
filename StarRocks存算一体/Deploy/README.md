@@ -9,6 +9,7 @@ cat /proc/cpuinfo | grep avx2
 | 10.84.10.7 | FE&BE     | LEADER   | 40核      | 125Gi   |
 | 10.84.10.8 | FE&BE     | FOLLOWER | 40核      | 125Gi   |
 | 10.84.10.9 | FE&BE     | FOLLOWER | 40核      | 125Gi   |
+
 注意：每台FE的JVM最大堆内存设置为32768m，BE限制最多使用整体的60%（75GB），系统预留15%,具体配置可在脚本中fe.conf和be.conf中体现
 # 环境配置（三台机器都要做）
 ### 1、克隆项目

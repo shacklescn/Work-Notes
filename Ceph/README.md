@@ -8,6 +8,16 @@ ceph osd status
 
 # 查看某个OSD属于哪个节点
 ceph osd find <OSD ID>
+
+# 查看已创建卷组
+ceph fs subvolume ls cephfs
+
+# 查看卷组中的子卷
+ceph fs subvolume ls cephfs csi
+
+# 查看已创建image
+rbd -p kubernetes ls
+
 ```
 # FQA
 ## 1、Ceph osd 异常  处于autoout,exists状态
@@ -263,4 +273,160 @@ root@ceph01:~# ceph -s
  
   io:
     client:   341 B/s rd, 2.0 MiB/s wr, 0 op/s rd, 138 op/s wr
+```
+## 2、清理cephfs中的子卷
+有时候把存储类的策略修改成了```reclaimPolicy: Retain``` 删除掉PV和PVC时，ceph中的卷目录依旧存在，此时如果想在ceph集群中删除需要执行以下操作
+语法格式：
+```shell
+ceph fs subvolume rm <文件系统名称> <子卷名称> [<子卷组名称>] [选项]
+```
+示例：
+```shell
+root@ceph01:~# ceph fs subvolume ls cephfs csi
+[
+    {
+        "name": "csi-vol-8d0cff75-f827-4481-9c32-488fade7d73c"
+    },
+    {
+        "name": "csi-vol-50409f8d-02ad-4f0a-83be-17efb6b4a40c"
+    }
+]
+
+root@ceph01:~# ceph fs subvolume rm cephfs csi-vol-50409f8d-02ad-4f0a-83be-17efb6b4a40c csi --force
+root@ceph01:~# ceph fs subvolume ls cephfs csi
+[
+    {
+        "name": "csi-vol-8d0cff75-f827-4481-9c32-488fade7d73c"
+    }
+]
+```
+## 3、清理rbd中的image
+语法格式：
+```shell
+rbd rm -p <pool_name> <image_name>
+```
+示例：
+```shell
+root@ceph01:~# rbd rm kubernetes/csi-vol-a0016be4-54a1-489a-b5dd-2dd14c9b2ec6
+Removing image: 100% complete...done.
+```
+如果image被使用中是无法被删除的
+```shell
+#举例
+root@ceph01:~# rbd rm kubernetes/csi-vol-e483e366-cf2a-4273-91c6-483357f9444d
+2024-11-22T11:17:11.041+0800 7f9ad9ffb700 -1 librbd::image::PreRemoveRequest: 0x5572469d42b0 check_image_watchers: image has watchers - not removing
+Removing image: 0% complete...failed.
+rbd: error: image still has watchers
+This means the image is still open or the client using it crashed. Try again after closing/unmapping it or waiting 30s for the crashed client to timeout.
+```
+## 4、查询PVC挂载的是哪个image
+### 4.1、mount 方式查询
+```shell
+root@master2:~#  mount | grep rbd
+/dev/rbd0 on /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-f0d8f905-f5dc-42ee-9846-15ac33b84773/globalmount/0001-0024-660ee6be-a333-11ef-88f2-1587797466c6-0000000000000002-6fb4417f-70e0-4c86-9555-c37fbabd8783 type ext4 (rw,relatime,discard,stripe=16,_netdev)
+/dev/rbd0 on /var/lib/kubelet/pods/8694e7f8-ce29-4f5d-8852-8c393030cd44/volumes/kubernetes.io~csi/pvc-f0d8f905-f5dc-42ee-9846-15ac33b84773/mount type ext4 (rw,relatime,discard,stripe=16,_netdev)
+/dev/rbd0 on /var/lib/kubelet/pods/8694e7f8-ce29-4f5d-8852-8c393030cd44/volume-subpaths/pvc-f0d8f905-f5dc-42ee-9846-15ac33b84773/init/0 type ext4 (rw,relatime,discard,stripe=16)
+/dev/rbd0 on /var/lib/kubelet/pods/8694e7f8-ce29-4f5d-8852-8c393030cd44/volume-subpaths/pvc-f0d8f905-f5dc-42ee-9846-15ac33b84773/redis/0 type ext4 (rw,relatime,discard,stripe=16)
+/dev/rbd1 on /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-69a041be-842a-4221-89e3-4c334e1f7b0b/globalmount/0001-0024-660ee6be-a333-11ef-88f2-1587797466c6-0000000000000002-c0b75db4-bfdf-47a0-8052-858748b57e4b type ext4 (rw,relatime,discard,stripe=16,_netdev)
+/dev/rbd1 on /var/lib/kubelet/pods/8694e7f8-ce29-4f5d-8852-8c393030cd44/volumes/kubernetes.io~csi/pvc-69a041be-842a-4221-89e3-4c334e1f7b0b/mount type ext4 (rw,relatime,discard,stripe=16,_netdev)
+```
+c37fbabd8783和858748b57e4b 对应着image后12位ID
+### 4.2、kubectl方式查询
+```shell
+root@master3:~# kubectl get pv -o json | jq -r '.items[].spec.csi.volumeHandle' | awk '{print substr($0, length($0)-11, 12)}'
+eacd7eae6dac
+22b2a7243ba5
+3ca22c459750
+336983644613
+0d307d6a4308
+4ac1dda8b4e4
+1d84dbf5391b
+21165433a318
+f2a5cfc0fc8c
+3ac1966671d0
+cba3c416b0cc
+d7137d9762fe
+10df14a9911d
+f1c9bc1d3272
+9d2fb0a15225
+15c0f11c48e1
+e824dfb6ae43
+ec9b06ca124e
+080437d9c845
+3a1e596feff5
+c9f639075c10
+74e531b5cc5f
+47d474ae1bcc
+662f189a137b
+e293c7181050
+6ac00c255632
+8704a3f5d12f
+b525a49c99d4
+38fb5be734f2
+b7caaf5818ed
+2c478e37695f
+ed50bcf367de
+f9350590b5f3
+3e7976475437
+214399b30053
+7b5ea1c44080
+59396c916b51
+d0dce30aa264
+babcb350317c
+738d5e0975b7
+220e9c3aa08e
+32f3bb1a06bd
+337cb970910e
+537878622304
+f640638dc040
+858527881202
+ff1c546e760a
+bacb6f3ec559
+```
+每个ID对应着ceph中rbd的image ID
+例如：eacd7eae6dac  对应着csi-vol-92f0db0a-5d0b-46aa-9c45-eacd7eae6dac
+## 5、Pod 重新调度时，对应的PVC一直绑定不上，报错说是已被进程占用
+### 问题描述：
+
+Pod创建在A节点，之后被重新调度到B节点，调度到B节点时一直处于```ContainerCreating```查看报错显示是PVC已被占用，到Ceph节点查看对应的image信息，显示被10.84.10.13所占用并有watcher锁，查看对应主机显示没有被占用
+```shell
+# 占用日志
+Events:
+  Type     Reason       Age    From               Message
+  ----     ------       ----   ----               -------
+  Normal   Scheduled    2m22s  default-scheduler  Successfully assigned lingshuchain/serving-56f679b7b-82p2z to node3
+  Warning  FailedMount  20s    kubelet            Unable to attach or mount volumes: unmounted volumes=[volume-kf16n5], unattached volumes=[host-time volume-1x0122 volume-kf16n5 kube-api-access-v487t]: timed out waiting for the condition
+  Warning  FailedMount  19s    kubelet            MountVolume.MountDevice failed for volume "pvc-2329c9ec-bfa3-4be8-8f70-a6a98e47b952" : rpc error: code = Internal desc = rbd image kubernetes/csi-vol-9bfc9e62-d507-4aac-b84e-21165433a318 is still being used
+
+# image信息
+root@ceph01:~# rbd status kubernetes/csi-vol-9bfc9e62-d507-4aac-b84e-21165433a318 -p kubernetes
+Watchers:
+	watcher=10.84.10.13:0/254249809 client.164878 cookie=18446462598732840978
+	
+# 查看10.84.10.13卷挂载信息
+root@node1:~# mount | grep pvc-2329c9ec-bfa3-4be8-8f70-a6a98e47b952
+root@node1:~# hostname -I
+10.84.10.13 172.17.0.1 10.233.90.0
+```
+### 解决办法
+把watcher ip加入到黑名单，然后再在黑名单中清除
+```shell
+# 把watcher ip信息（10.84.10.13:0/254249809）加入到黑名单
+root@ceph01:~# ceph osd blacklist add 10.84.10.13:0/254249809
+blocklisting 10.84.10.13:0/254249809 until 2025-07-03T02:32:05.399971+0000 (3600 sec)
+root@ceph01:~# rbd status kubernetes/csi-vol-9bfc9e62-d507-4aac-b84e-21165433a318 -p kubernetes
+Watchers: none
+
+# 在黑名单中清除10.84.10.13:0/254249809
+root@ceph01:~# ceph osd blacklist rm 10.84.10.13:0/254249809
+un-blocklisting 10.84.10.13:0/254249809
+root@ceph01:~# rbd status kubernetes/csi-vol-9bfc9e62-d507-4aac-b84e-21165433a318 -p kubernetes
+Watchers: none
+```
+### 优化SC
+可以在SC的配置文件中加个参数```recover_session=clean```
+```yaml
+mountOptions:
+  - discard
+  - recover_session=clean
 ```

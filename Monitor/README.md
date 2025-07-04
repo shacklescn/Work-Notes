@@ -12,7 +12,7 @@ git clone https://github.com/shacklescn/Work-Notes.git
 ```shell
 cd Work-Notes/Monitor/Kube-Prometheus
 ```
-## 3、文件作用说明
+## 3、目录架构
 ```shell
 root@master3:~/Work-Notes/Monitor/Kube-Prometheus# ll MySQL
 total 24

@@ -27,7 +27,12 @@ bash StarRocks-init.sh
 脚本中的JDK文件是在 [oracle官网](https://www.oracle.com/java/technologies/downloads/#java11) 下载的，如果版本不一致导致的文件名不一样，可以将脚本自动中的变量修改成对应的名字即可
 # 安装LEADER StarRocks服务（LEADER节点操作）
 ## 1、安装并启动StarRocks服务
+
 ```shell
+# 为 FE 和 BE 节点分配一个专有的 IP 地址(CIDR格式)
+sed -i "s|priority_networks = 10\.84\.10\.0/24|priority_networks = $(hostname -I | awk '{split($1,a,"."); print a[1]"."a[2]"."a[3]".0/24"}')|g" StarRocks-LEADER.sh
+
+# 安装StarRocks-LEADER
 bash StarRocks-LEADER.sh
 ```
 ## 2、验证是否成功
@@ -116,6 +121,10 @@ ClusterDecommissioned: false
 Alive: true:添加成功
 # 安装FOLLOWER StarRocks服务（在两个FOLLOWER节点操作）
 ```shell
+# 为 FE 和 BE 节点分配一个专有的 IP 地址(CIDR格式)
+sed -i "s|priority_networks = 10\.84\.10\.0/24|priority_networks = $(hostname -I | awk '{split($1,a,"."); print a[1]"."a[2]"."a[3]".0/24"}')|g" StarRocks-LEADER.sh
+
+# 安装StarRocks FOLLOWER
 bash StarRocks-FOLLOWER.sh <LEADER IP>
 ```
 安装完后，验证方式和LEADER的验证方法一致

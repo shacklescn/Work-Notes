@@ -171,9 +171,13 @@ name=172.26.92.154_9312_1705568349984
 SHOW FRONTENDS;
 ```
 如果字段 Alive 为 true，说明该 FE 节点正常启动并加入集群。
+
 如果字段 Role 为 LEADER，说明该 FE 节点为 Leader FE 节点。
+
 如果数据和元数据完整，且该节点的角色是 Leader，可以删除之前添加的配置并重新启动节点。
+
 将需要重新添加回集群的 FE 节点的元数据目录 meta_dir 清除。
+
 使用新 Leader FE 节点作为 Helper 启动 Follower 节点。
 ```shell
 # 将 <leader_ip> 替换为 Leader FE 节点的 IP 地址（priority_networks），

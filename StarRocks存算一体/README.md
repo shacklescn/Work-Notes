@@ -31,6 +31,15 @@ ALTER SYSTEM DROP BACKEND "10.84.0.18:9050","10.84.0.19:9050";
                   
 -- 查询建表时的sql语句也包括查表副本信息
 SHOW CREATE TABLE <DB>.<tablename>;
+
+-- 查看当前集群各数据库的统计信息。
+SHOW PROC '/statistic';
+
+-- 查看当前连接的FE节点正在执行的查询信息。
+SHOW PROC '/current_queries';
+
+-- 查询当前集群中所有FE节点正在执行的查询信息。
+SHOW PROC '/global_current_queries';
 ```
 # FQA
 # 1、在删除某个be节点时报错 某些表只有一个副本时 需增加副本后 再进行删除BE节点

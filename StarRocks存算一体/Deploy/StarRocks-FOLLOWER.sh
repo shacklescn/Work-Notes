@@ -131,8 +131,8 @@ echo "[INFO] systemd 服务文件创建完成"
 systemctl daemon-reload
 
 # 启动并设置开机启动
-systemctl enable --now starrocks-fe.service
-systemctl enable --now starrocks-be.service
+#systemctl enable --now starrocks-fe.service
+#systemctl enable --now starrocks-be.service
 
 echo "[INFO] StarRocks FE 和 BE 已启动并设置为开机自启"
 

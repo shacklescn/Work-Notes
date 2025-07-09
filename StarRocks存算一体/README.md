@@ -42,14 +42,14 @@ SHOW PROC '/current_queries';
 SHOW PROC '/global_current_queries';
 ```
 # FQA
-# 1、在删除某个be节点时报错 某些表只有一个副本时 需增加副本后 再进行删除BE节点
-## 具体报错：
+## 1、在删除某个be节点时报错 某些表只有一个副本时 需增加副本后 再进行删除BE节点
+### 具体报错：
 
 ```sql
 mysql> ALTER SYSTEM DROP BACKEND "10.84.91.16:9050";
 ERROR 1064 (HY000): Tables such as [hts.statistics_log] on the backend[10.84.91.16:9050] have only one replica. To avoid data loss, please change the replication_num of [hts.statistics_log] to three. ALTER SYSTEM DROP BACKEND <backends> FORCE can be used to forcibly drop the backend.
 ```
-## 解决方法:
+### 解决方法:
 
 将报错的这个表副本数增加 增加到2个以上，比如增加至3个
 ```sql
@@ -94,3 +94,94 @@ PROPERTIES (
 ```sql
 mysql> ALTER SYSTEM DROP BACKEND "10.84.0.18:9050";
 ```
+## 2、FE 节点无法提供服务
+### 问题：
+当 Follower FE 节点无法选举 Leader 时， FE 将无法提供服务。
+当此问题发生时，以下日志记录可能会重复出现
+```log
+wait globalStateMgr to be ready. FE type: INIT. is ready: false
+```
+如果大多数 Follower 节点未运行， FE 节点组将无法提供服务。此处“大多数”指 1 + (Follower 节点数/2)。请注意，Leader FE 节点本身也是一个 Follower 节点，但 Observer 节点不是 Follower 节点。
+### 解决办法
+从 fe/meta/image/ROLE 文件中查看每个 FE 节点的角色：
+```
+root@starrocks-bin:~# cat /data/starrocks/fe/meta/image/ROLE 
+#Tue Jul 08 11:42:51 CST 2025
+role=FOLLOWER
+hostType=IP
+name=10.84.0.106_9010_1739508550864
+```
+
+从 BDBJE 日志中查看 Follower 节点的总数：
+```sql
+grep "Current group size" /data/starrocks/fe/meta/bdb/je.info.0
+```
+以下示例输出表明集群中有1个 Follower 节点。
+```
+2025-07-08 03:42:40.289 UTC INFO [10.84.0.106_9010_1739508550864] Current group size: 2
+```
+要解决此问题，需要启动集群中的所有 Follower 节点。如果无法重新启动使用下面步骤恢复服务
+#### 1. 停止所有 FE 节点。
+#### 2. 备份所有 FE 节点的元数据目录 meta_dir。 
+#### 3. 查看拥有最新元数据的节点。您需要在所有 FE 节点的服务器上运行以下命令。
+```shell
+# 需要在命令中指定节点实际使用的 .jar 包名，因为该包会根据 StarRocks 版本不同而变化。
+java -jar /apps/StarRocks/fe/lib/starrocks-bdb-je-18.3.20.jar DbPrintLog -h /data/starrocks/fe/meta/bdb/ -vd
+```
+示例输出：
+```log
+<DbPrintLog>
+file 0x3b numRepRecords = 24479 firstVLSN = 1,434,126 lastVLSN = 1,458,604
+file 0x3c numRepRecords = 22541 firstVLSN = 1,458,605 lastVLSN = 1,481,145
+file 0x3d numRepRecords = 25176 firstVLSN = 1,481,146 lastVLSN = 1,506,321
+......
+file 0x74 numRepRecords = 26903 firstVLSN = 2,927,458 lastVLSN = 2,954,360
+file 0x75 numRepRecords = 26496 firstVLSN = 2,954,361 lastVLSN = 2,980,856
+file 0x76 numRepRecords = 18727 firstVLSN = 2,980,857 lastVLSN = 2,999,583
+... 0 files at end
+First file: 0x3b
+Last file: 0x76
+</DbPrintLog>
+```
+lastVLSN 值最大的节点具有最新的元数据。
+#### 4. 从 ```/data/starrocks/fe/meta/image/ROLE ``` 文件中查看元数据最新的 FE 节点的角色（Follower 或 Observer）。
+```shell
+cat fe/meta/image/ROLE
+
+#Fri Jan 19 20:03:14 CST 2024
+role=FOLLOWER
+hostType=IP
+name=172.26.92.154_9312_1705568349984
+```
+如果有多个元数据最新的节点，建议优先选择一个 Follower 节点继续下述步骤。如果有多个 Follower 节点元数据最新，可以选择其中一个继续。
+
+#### 5.根据上一步中选择的 FE 节点的角色，执行相应的操作。
+
+如果元数据最新的节点为 Follower，则执行以下操作：
+
+在 fe.conf 中添加以下配置：
+
+```bdbje_reset_election_group = true```
+
+启动该节点，并检查数据和元数据是否完整。
+
+查看当前节点是否为 Leader 节点。
+
+```sql
+SHOW FRONTENDS;
+```
+如果字段 Alive 为 true，说明该 FE 节点正常启动并加入集群。
+如果字段 Role 为 LEADER，说明该 FE 节点为 Leader FE 节点。
+如果数据和元数据完整，且该节点的角色是 Leader，可以删除之前添加的配置并重新启动节点。
+将需要重新添加回集群的 FE 节点的元数据目录 meta_dir 清除。
+使用新 Leader FE 节点作为 Helper 启动 Follower 节点。
+```shell
+# 将 <leader_ip> 替换为 Leader FE 节点的 IP 地址（priority_networks），
+# 并将 <leader_edit_log_port>（默认：9010）替换为 Leader FE 节点的 edit_log_port。
+./fe/bin/start_fe.sh --helper <leader_ip>:<leader_edit_log_port> --daemon
+```
+将 Follower 节点重新添加至集群。
+```sql
+ALTER SYSTEM ADD FOLLOWER "<new_follower_host>:<new_follower_edit_log_port>";
+```
+当所有节点都重新添加到集群后，元数据恢复成功。

@@ -1,4 +1,8 @@
-# StarRocks 存算一体监控配置以及Grafana看板
+# 监控配置以及Grafana看板
+| 路径类型                  | 功能描述                  |
+|-----------------------|-----------------------|
+| Grafana/Observable_dashboard  | Grafana看板，目录名对应服务名    |
+| Kube-Prometheus     | 包含内部Pod监控和集群外部监控等配置文件 |
 此目录的所有监控文件均依赖于Kube-Prometheus组件
 # 食用条件
 - 拥有一个可正常运行的Kubernetes集群
@@ -38,11 +42,11 @@ root@master3:~/Work-Notes/Monitor/Kube-Prometheus# ll StarRocks
 total 1
 -rw-r--r-- 1 root root 1782 Jun 30 15:57 External_StarRocks.yaml
 ```
-| 文件名             | 文件作用                              |
-|-----------------|-----------------------------------|
-| Node_Exporter目录 | 监控k8s集群外部的Node_Exporter           |
-| StarRocks目录     | 监控集群外部的StarRocks集群配置文件            |
-| MySQL目录         | 监控集群外部的MySQL5.7和MySQL8.0主从信息的配置文件 |
+| 文件名       | 文件作用                              |
+|-----------|-----------------------------------|
+| Node_Exporter | 监控k8s集群外部的Node_Exporter           |
+| StarRocks | 监控集群外部的StarRocks集群配置文件            |
+| MySQL     | 监控集群外部的MySQL5.7和MySQL8.0主从信息的配置文件 |
 ## 4、配置文件详解
 ### Node_Exporter篇
 ```yaml

@@ -136,12 +136,12 @@ service/redis-stack-server   ClusterIP      10.233.6.177    <none>        6379/T
 ```bash
 kubectl delete ingress -n higress-system default
 ```
-## 2. 设置访问LB的根地址时跳转到higress-console
+## 2. 暴露higress-console端口
 ```bash
-kubectl apply -f higress-console-ingress.yaml
+kubectl patch svc higress-console -n higress-system -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30928}]}}'
 ```
 ## 3. 访问higress-console
-higress-console访问地址 : http://10.84.3.100
+higress-console访问地址 : http://10.84.3.100:30928
 ![img.png](image/higress-console.png)
 
 ## 4. 对接外部监控

@@ -103,7 +103,7 @@ wait globalStateMgr to be ready. FE type: INIT. is ready: false
 ```
 如果大多数 Follower 节点未运行， FE 节点组将无法提供服务。此处“大多数”指 1 + (Follower 节点数/2)。请注意，Leader FE 节点本身也是一个 Follower 节点，但 Observer 节点不是 Follower 节点。
 ### 解决办法
-从 fe/meta/image/ROLE 文件中查看每个 FE 节点的角色：
+从 fe/meta/image/ROLE 文件中查看**每个 FE 节点**的角色：
 ```
 root@starrocks-bin:~# cat /data/starrocks/fe/meta/image/ROLE 
 #Tue Jul 08 11:42:51 CST 2025

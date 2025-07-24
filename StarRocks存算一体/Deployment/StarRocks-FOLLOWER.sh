@@ -100,6 +100,7 @@ Description=starrocks-fe daemon
 [Service]
 Type=simple
 Environment="JAVA_HOME=/usr/local/jdk11"
+Environment="LANG=en_US.UTF8"
 ExecStart=/bin/bash ${SR_HOME}/fe/bin/start_fe.sh --helper="${FE_HELPER}"
 ExecStop=/bin/bash ${SR_HOME}/fe/bin/stop_fe.sh
 Restart=always

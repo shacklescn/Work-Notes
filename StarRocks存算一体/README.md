@@ -40,6 +40,24 @@ SHOW PROC '/current_queries';
 
 -- 查询当前集群中所有FE节点正在执行的查询信息。
 SHOW PROC '/global_current_queries';
+
+     
+     
+-- 用户授权
+-- 创建<TEST_USER>账户并设置密码<PASSWD>
+CREATE USER '<TEST_USER>'@'%' IDENTIFIED BY '<PASSWD>';
+
+-- 授权<TEST_USER>账户<TEST_DB>库有完全访问和管理权限
+GRANT ALL PRIVILEGES ON <TEST_DB>.* TO '<TEST_USER>'@'%';
+
+--验证用户当前权限
+SHOW GRANTS FOR '<TEST_USER>'@'%';
+
+-- 撤销对<TEST_DB>的所有授权
+REVOKE ALL PRIVILEGES ON <TEST_DB>.* FROM '<TEST_USER>'@'%';
+
+-- 删除账户
+DROP USER 'test'@'%';
 ```
 # FQA
 ## 1、在删除某个be节点时报错 某些表只有一个副本时 需增加副本后 再进行删除BE节点

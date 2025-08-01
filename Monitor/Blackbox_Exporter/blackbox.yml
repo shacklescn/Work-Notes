@@ -1,0 +1,20 @@
+modules:
+  http_header_check:
+    prober: http
+    http:
+      method: GET
+      preferred_ip_protocol: "ip4"
+      valid_status_codes: [ 200 ]
+      fail_if_header_not_matches:
+        - header: "Server" # 可以有多个header 匹配
+          regexp: "^nginx$"
+
+  http_body_check:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: "ip4"
+      method: GET
+      valid_status_codes: [ 200 ]
+      fail_if_body_not_matches_regexp:
+        - '"status"\s*:\s*"UP"' # 可以有多个body 匹配

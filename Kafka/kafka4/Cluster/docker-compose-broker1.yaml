@@ -1,0 +1,99 @@
+services:
+  kafka1:
+    image: bitnami/kafka:4.0.0
+    container_name: kafka1
+    hostname: kafka1
+    restart: unless-stopped
+    ports:
+      - "19092:9092"
+      - "19093:9093"
+    mem_limit: 4096m          # 容器最大内存限制
+    mem_reservation: 2048m    # 容器内存软限制（尽量保证有）
+    cpus: 2 
+    environment:
+      # 其他配置
+      - KAFKA_CFG_NUM_PARTITIONS=30                                                                # 创建新主题时的默认分区数(不指定的情况下)
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3                                                     # 设置默认副本数为3
+      - KAFKA_LOG_RETENTION_HOURS=168                                                              # 日志数据留存时间(小时)，168为7天
+      - KAFKA_CFG_SEGMENT_BYTES=1073741824                                                         # 分区日志文件的最大大小（字节）1GB
+      - KAFKA_CFG_LOG_RETENTION_CHECK_INTERVAL_MS=300000                                           # 日志保留检查功能的检查间隔(毫秒)，300000为300秒（5分钟）检查1次
+      - KAFKA_CFG_MESSAGE_MAX_BYTES=5000000                                                        # 单条消息的最大容量(字节)，5000000表示为5MB。
+
+      # 持久化配置
+      - KAFKA_CFG_LOG_DIRS=/bitnami/kafka/data
+
+      # KRaft 模式配置
+      - KAFKA_KRAFT_CLUSTER_ID=GKneAlksYLSkhu2789                                                  # 集群认证ID
+      - KAFKA_CFG_KRAFT_MODE=true                                                                  # 开启kraft模式
+      - KAFKA_CFG_NODE_ID=1                                                                        # 节点 ID      
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller                                                  # 同时将节点角色设置为 broker 和 controller
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:19093,3@kafka3:19093             # KRaft 模式下,集群节点角色列表，选举机制使用
+
+      # 监听器配置
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:SASL_PLAINTEXT,BROKER:SASL_PLAINTEXT   # 指定监听名称映射的协议
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER                                             # 指定 Controller 监听器名称
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=BROKER                                                # 指定 broker     监听器名称
+      - KAFKA_CFG_LISTENERS=BROKER://:9092,CONTROLLER://:9093                                      # broker和controller在本地监听地址和端口(内部)
+      - KAFKA_CFG_ADVERTISED_LISTENERS=BROKER://10.84.3.125:19092                                   # broker 广播公布给外部客户端的监听端口和地址(外部)
+
+      # SASL 认证机制配置
+      - KAFKA_CFG_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512,PLAIN,SCRAM-SHA-256                         # SASL模式下开启哪些通信认证机制
+      - KAFKA_CFG_SASL_MECHANISM=SCRAM-SHA-512,PLAIN,SCRAM-SHA-256                                  # 客户端 与 broker 使用的认证机制
+      - KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN                                        # 集群 Broker 内部 使用的通信机制
+      - KAFKA_CFG_SASL_MECHANISM_CONTROLLER_PROTOCOL=PLAIN                                          # controller 使用的通信机制
+      - KAFKA_CFG_SECURITY_PROTOCOL=SASL_PLAINTEXT                                                  # 客户端 与broker通信使用的协议
+
+      # 与jass.conf文件配置项，任选其一就可以
+      #- KAFKA_CFG_SASL_JAAS_CONFIG=org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="SecA@2025...";
+      #org.apache.kafka.common.security.scram.ScramLoginModule required username="xwone" password="SecA@2024...";
+      # 用于 SASL 认证的 jaas.conf 安全配置认证文件，与上面变量任选其一就可以
+      - KAFKA_OPTS=-Djava.security.auth.login.config=/bitnami/kafka/config/jaas.conf
+      
+      # 超级用户和 ACL 授权
+      # 指定admin用户为超级用户，可以设置多个，使用;隔开
+      - KAFKA_CFG_SUPER_USERS=User:admin
+      # true为未找到ACL策略，则允许所有用户，false找到ACL策略，则允许ALC策略中配置，拒绝所有
+      - KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND=true
+      # kafka启动后，使用 StandardAuthorizer 来处理所有的 ACL 检查
+      - KAFKA_CFG_AUTHORIZER_CLASS_NAME=org.apache.kafka.metadata.authorizer.StandardAuthorizer
+
+      # 定义角色用户名和密码
+      - KAFKA_CONTROLLER_USER=admin
+      - KAFKA_CONTROLLER_PASSWORD=SecA@2025...
+      - KAFKA_INTER_BROKER_USER=admin
+      - KAFKA_INTER_BROKER_PASSWORD=SecA@2025...
+      # CLIENT可以设置多个用户和密码
+      - KAFKA_CLIENT_USERS=admin,seca 
+      - KAFKA_CLIENT_PASSWORDS=SecA@2025...,SecA@2025...
+    extra_hosts:
+      - "kafka1:10.84.3.125"
+      - "kafka2:10.84.3.126"
+      - "kafka3:10.84.3.127"
+    volumes:
+      - /data/kafka:/bitnami/kafka:rw
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - custom
+
+  kafka-map:
+    image: 'dushixiang/kafka-map:v1.3.3'
+    container_name: kafka-map
+    hostname: kafka-map
+    restart: always
+    ports:
+      - '8080:8080'
+    mem_limit: 500m          # 容器最大内存限制
+    mem_reservation: 300m    # 容器内存软限制（尽量保证有）
+    cpus: 0.3
+    environment:
+      - DEFAULT_USERNAME=superAdmin
+      - DEFAULT_PASSWORD=aV5;eY4@xD4%
+    volumes:
+      - /data/kafka-map:/usr/local/kafka-map/data
+    networks:
+      - custom
+
+networks:
+  custom:
+    external: true

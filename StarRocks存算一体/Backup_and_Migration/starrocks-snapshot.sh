@@ -10,14 +10,14 @@
 #    "aws.s3.endpoint" = "http://10.84.3.46:9000"
 # );
 
-# CREATE REPOSITORY green_pioneer_iot_uat_bak
-# WITH BROKER
-# ON LOCATION "s3://starrocks/green_pioneer_iot_uat_bak"
-# PROPERTIES(
-#    "aws.s3.access_key" = "StarRocks",
-#    "aws.s3.secret_key" = "SecA@2025...",
-#    "aws.s3.endpoint" = "http://10.84.3.46:9000"
-# );
+#CREATE REPOSITORY green_pioneer_iot_uat_bak
+#WITH BROKER
+#ON LOCATION "s3://starrocks/green_pioneer_iot_uat_bak"
+#PROPERTIES(
+#   "aws.s3.access_key" = "StarRocks",
+#   "aws.s3.secret_key" = "SecA@2025...",
+#   "aws.s3.endpoint" = "http://10.84.3.46:9000"
+#);
 # ======================
 # 核心参数
 # ======================

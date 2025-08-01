@@ -167,11 +167,10 @@ network:
 ```shell
 # 网卡配置
 network:
-  version: 2
   ethernets:
     eno6:
       addresses:
-      - 10.84.10.10/24
+      - 10.84.10.10/23
       routes:
       - to: default
         via: 10.84.10.1
@@ -180,7 +179,7 @@ network:
         - 10.0.13.23
         - 10.0.13.24
         search: []
-    eno6:
+    eno5:
       addresses:
       - 10.84.3.245/24
       routes:
@@ -191,6 +190,7 @@ network:
         - 10.0.13.23
         - 10.0.13.24
         search: []
+  version: 2
 # 使网卡配置生效
 netplan apply
 ```

@@ -13,11 +13,13 @@ ceph osd find <OSD ID>
 ceph fs subvolume ls cephfs
 
 # 查看卷组中的子卷
-ceph fs subvolume ls cephfs csi
+ceph fs subvolume ls <cephfs name> <子卷 name>
 
 # 查看已创建image
-rbd -p kubernetes ls
+rbd -p <pool name> ls
 
+# 查看各个存储池所用空间
+ceph df
 ```
 # FQA
 ## 1、Ceph osd 异常  处于autoout,exists状态

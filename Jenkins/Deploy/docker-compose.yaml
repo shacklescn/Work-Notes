@@ -12,7 +12,6 @@ services:
       - /data/jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
-      - /etc/localtime:/etc/localtime:ro
       - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime:ro
     restart: unless-stopped
     privileged: true

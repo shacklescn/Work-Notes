@@ -31,7 +31,7 @@
 此处忽略视图，笔记中只记录从 项目文件夹（Folders） → Job（任务）
 > 注意：本文配置基于jenkins 2.516.2-lts版本进行记录，不同版本UI或有差异
 ## 安装Jenkins插件
-点击左上角Jenkins → 右上角系统管理 → 插件管理 → Available Plugins → 一个一个搜索（```gitlab、Stage View、Role-based Authorization Strategy```） → 选择手动安装
+点击左上角Jenkins → 右上角系统管理 → 插件管理 → Available Plugins → 一个一个搜索（```gitlab、Stage View、Role-based Authorization Strategy、docker pipeline```） → 选择手动安装
 ![Role_based_Authorization_Strategy.png](image/Role_based_Authorization_Strategy.png)
 
 ![gitlab.png](image/gitlab.png)

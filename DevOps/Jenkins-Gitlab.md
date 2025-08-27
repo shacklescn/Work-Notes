@@ -32,11 +32,11 @@
 > 注意：本文配置基于jenkins 2.516.2-lts版本进行记录，不同版本UI或有差异
 ## 安装Jenkins插件
 点击左上角Jenkins → 右上角系统管理 → 插件管理 → Available Plugins → 一个一个搜索（```gitlab、Stage View、Role-based Authorization Strategy```） → 选择手动安装
-![Role-based Authorization Strategy.png](image/Role-based Authorization Strategy.png)
+![Role_based_Authorization_Strategy.png](image/Role_based_Authorization_Strategy.png)
 
 ![gitlab.png](image/gitlab.png)
 
-![Stage View.png](image/Stage View.png)
+![Stage_View.png](image/Stage_View.png)
 
 ## 创建连接代码仓库的凭证
 ### 1. 点击主页系统管理

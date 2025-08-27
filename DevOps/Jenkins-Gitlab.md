@@ -134,3 +134,33 @@ pipeline {
 ![push_gitlab.png](image/push_gitlab.png)
 ![check_pipeline.png](image/check_pipeline.png)
 自动触发构建的任务中会有注释```Started by GitLab push by Administrator```
+
+# Jenkins的RBAC认证
+目的是让qwx用户能对ProjectA文件夹以及文件夹下的所有item拥有build和Read权限
+## 1. 创建用户
+创建一个用户名为```qwx```
+![img.png](image/adduser1.png)
+![img.png](image/adduser2.png)
+![img.png](image/adduser3.png)
+## 2. 配置RBAC
+![RBAD1.png](image/RBAD1.png)
+### 2.1. 创建全局role
+![img.png](image/Global_roles.png)
+### 2.2. 授权给全局role General 所有资源可读权限
+![img.png](image/authorization_role.png)
+### 2.3. 创建item roles
+![item_roles.png](image/item_roles.png)
+```ProjectA.*```中的ProjectA是指ProjectA文件夹，```.*```是指ProjectA文件夹下的所有资源都可管理
+![img.png](image/scope_of_authority.png)
+点击```Add```后role会在item role中创建，可以点击蓝色的```ProjectA.*``` 可查看权限范围
+### 2.4. 授权给item role的ProjectA 对个别资源可读可编辑权限
+![img.png](image/item_role_auth.png)
+```ProjectA```这个```item roles```对```任务板块```有```build```和```Read```权限并对```view板块```拥有```Read```权限
+### 2.5. 创建Assign Roles
+![img.png](image/bindding.png)
+第一步将```qwx```用户绑定到拥有全局读权限```General Role```
+
+第二步将给```qwx```用户绑定到```item_role```的```ProjectA```权限
+### 2.6. 验证是否生效
+![img.png](image/Check_RBAC.png)
+重新找个浏览器使用```qwx```账户登录```Jenkins```，发现只能看到(读取)```ProjectA```和```ProjectA```中资源的```build```权限

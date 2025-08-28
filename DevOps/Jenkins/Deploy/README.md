@@ -53,7 +53,7 @@ jenkins  |
 jenkins  | Jenkins initial setup is required. An admin user has been created and a password generated.
 jenkins  | Please use the following password to proceed to installation:
 jenkins  | 
-jenkins  | a0ce5bcdfb9e4865acbb7ea93effbb13    
+jenkins  | a0ce5bcdfb9e4865acbb7ea93effbb13     # 第一次安装时初始密码
 jenkins  | 
 jenkins  | This may also be found at: /var/jenkins_home/secrets/initialAdminPassword
 jenkins  | 
@@ -66,3 +66,6 @@ jenkins  | *************************************************************
 输入 a0ce5bcdfb9e4865acbb7ea93effbb13
 ![img.png](images/jenkins-init.png)
 选择 ```安装推荐的插件```
+
+## 修改密码
+![edit_pasword.png](images/edit_pasword.png)

@@ -7,7 +7,7 @@ git clone https://github.com/shacklescn/Work-Notes.git
 ```shell
 cd Work-Notes/Gitlab/Deploy
 ```
-## 下载conmpose
+## 下载compose
 ```shell
 sudo curl -L "https://github.com/docker/compose/releases/download/v2.39.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose
 ```

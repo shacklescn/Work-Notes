@@ -64,18 +64,21 @@ pipeline {
     agent any
     
     environment {
-        REGISTRY = '10.84.0.106' //harbor的地址
-        DOCKER_REPO = 'gpustack/gpustack-exporter' //CI完成后镜像上传到harbor的具体位置
+        REGISTRY = '10.84.0.106'
+        DOCKER_REPO = 'gpustack/gpustack-exporter'
     }
     
     stages {
         stage('Checkout') {
             steps {
                 git(
-                    url: 'http://10.84.0.106:880/test/gpustack_exporter.git',//gitlab UI界面中 HTTP克隆的链接
-                    credentialsId: 'c9b3e679-1f6e-4818-a769-5aaec2bf3aec', //刚才创建的gitlab凭证ID
-                    branch: 'main' //克隆的分支 此处以main为例
+                    url: 'http://10.84.0.106:880/test/gpustack_exporter.git',
+                    credentialsId: 'c9b3e679-1f6e-4818-a769-5aaec2bf3aec', 
+                    branch: 'main'
                 )
+                sh """
+                    ls -l
+                """
             }
         }
         
@@ -83,7 +86,7 @@ pipeline {
             steps {
                 script {
                     env.TIMESTAMP = sh(
-                        script: 'date +%Y%m%d-%H%M%S', //image 的tag
+                        script: 'date +%Y%m%d-%H%M%S',
                         returnStdout: true
                     ).trim()
                     
@@ -94,24 +97,39 @@ pipeline {
                 }
             }
         }
-        //将CI完成的image 上传至horbor
+        
         stage('Push Image') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: '72c8121e-367a-412c-b040-0f11c53e070f', //harbor的凭证ID
-                    usernameVariable: 'DOCKER_USER', //这里会将harbor的凭证中的用户名传递到DOCKER_USER
-                    passwordVariable: 'DOCKER_PASSWORD' //这里会将harbor的凭证中的密码传递到DOCKER_PASSWORD
+                    credentialsId: '72c8121e-367a-412c-b040-0f11c53e070f', 
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASSWORD'
                 )]) {
                     sh """
-                        # 登录镜像仓库
-                        echo \$DOCKER_PASSWORD | docker login \${REGISTRY} \\
-                          -u \$DOCKER_USER --password-stdin
-                        
-                        # 推送镜像
+                        echo \$DOCKER_PASSWORD | docker login \${REGISTRY} -u \$DOCKER_USER --password-stdin
                         docker push \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP}
+                        docker rmi \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP} || true
+                    """
+                }
+            }
+        }
+
+        stage('Update Manifest') {
+            steps {
+                dir('gpustack_exporter_manifest') {
+                    git(
+                        url: 'http://10.84.0.106:880/test/gpustack_exporter_manifest.git',
+                        branch: 'main',
+                        credentialsId: 'c9b3e679-1f6e-4818-a769-5aaec2bf3aec'
+                    )
+
+                    sh """
+                        sed -i "s#^\\\\(\\\\s*image:\\\\s*${REGISTRY}/${DOCKER_REPO}:\\\\).*#\\\\1${TIMESTAMP}#" GPUStack_Exporter.yaml
                         
-                        # 清理本地镜像（可选）
-                        # docker rmi \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP} || true
+                        git add GPUStack_Exporter.yaml
+                        git commit -m "Update image tag to ${TIMESTAMP}" || echo "No changes to commit"
+                        
+                        git push origin main
                     """
                 }
             }

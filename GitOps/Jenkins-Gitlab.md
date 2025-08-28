@@ -164,3 +164,87 @@ pipeline {
 ### 2.6. 验证是否生效
 ![img.png](image/Check_RBAC.png)
 重新找个浏览器使用```qwx```账户登录```Jenkins```，发现只能看到(读取)```ProjectA```和```ProjectA```中资源的```build```权限
+# JAVA代码pipeline
+## JAVA pipeline script
+```pipeline
+pipeline {
+    agent any
+    
+    environment {
+        REGISTRY = '10.84.0.106' //harbor仓库地址
+        DOCKER_REPO = 'java_study/java_study' //镜像目录
+        JAR_NAME = '/opt/app/demo-service-1.0.0-SNAPSHOT.jar' //dockerfile中的JAR_NAME
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git(
+                    url: 'http://10.84.0.106:880/test/java_study.git',  //代码仓库
+                    credentialsId: 'c9b3e679-1f6e-4818-a769-5aaec2bf3aec',//代码仓库的认证凭证
+                    branch: 'main'
+                )
+            }
+        }
+
+        stage('Build Jar (Maven in Docker)') {
+            steps {
+                script {
+                    docker.image('maven:3.3.9-jdk-8').inside("-v $HOME/.m2:/root/.m2") { //mvn 缓存目录，避免重复下载依赖包
+                        sh 'mvn -U clean install -DskipTests -s /var/jenkins_home/settings.xml package' //使用mvn编辑java代码  并使用国内的mvn代理源（settings.xml要提前创建并挂载至Jenkins容器中）
+                    }
+                }
+            }
+        }
+
+        stage('Archive Jar') {
+        steps {
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true //mvn编译后会把代码放到target/下，jar包的名称在依赖文件pom.xml中定义
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    env.TIMESTAMP = sh(
+                        script: 'date +%Y%m%d-%H%M%S',//设置容器的tag
+                        returnStdout: true
+                    ).trim()
+                    
+                    sh """
+                        echo '构建镜像: \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP}'
+                        cp src/main/docker/docker-entrypoint.sh docker-entrypoint.sh //此处因为dockerfile的文件中是直接在ADD 的src/main/docker/docker-entrypoint.sh 所以提前将docker-entrypoint.sh脚本copy至根目录
+                        docker build \
+                            --build-arg JAR_FILE=target/demo-service-1.0.0-SNAPSHOT.jar \ //传递给dockerfile中的JAR_FILE变量 值
+                            -f src/main/docker/Dockerfile \
+                            -t ${REGISTRY}/${DOCKER_REPO}:${TIMESTAMP} \  
+                            .
+                    """
+                }
+            }
+        }
+        
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: '72c8121e-367a-412c-b040-0f11c53e070f',//harbor的凭证
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh """
+                        # 登录镜像仓库
+                        echo \$DOCKER_PASSWORD | docker login \${REGISTRY} \\
+                          -u \$DOCKER_USER --password-stdin
+                        
+                        # 推送镜像
+                        docker push \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP}
+                        
+                        # 清理本地镜像（可选）
+                        docker rmi \${REGISTRY}/\${DOCKER_REPO}:\${TIMESTAMP} || true
+                    """
+                }
+            }
+        }
+    }
+}
+```

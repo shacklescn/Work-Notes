@@ -1,0 +1,103 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mysql-config
+  labels:
+    app: mysql
+data:
+  my.cnf: >-
+    [client]
+    default-character-set=utf8mb4
+
+    [mysql]
+    default-character-set=utf8mb4
+
+    [mysqld] 
+    max_connections = 2000
+    secure_file_priv=/var/lib/mysql
+    default-storage-engine=INNODB
+    lower_case_table_names=1
+    max_allowed_packet=256M
+    innodb_flush_log_at_trx_commit=1
+    innodb_log_file_size=1G
+    innodb_log_files_in_group=3
+    sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: mysql-config
+      containers:
+        - name: mysql
+          image: 'mysql:8.0.39'
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: SecA@2025...
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mysql/conf.d/my.cnf
+              subPath: my.cnf
+            - name: data
+              mountPath: /var/lib/mysql
+              subPath: mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: csi-rbd-sc
+  serviceName: mysql-headless
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-external
+  labels:
+    app: mysql-external
+spec:
+  ports:
+    - name: mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-headless
+  labels:
+    name: mysql-headless
+spec:
+  ports:
+    - name: mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+  clusterIP: None

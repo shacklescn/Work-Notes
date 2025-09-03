@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  serviceName: redis-headless
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: 'redis:7.4.5'
+          command:
+            - redis-server
+          args:
+            - /etc/redis/redis.conf
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 100m
+              memory: 500Mi
+            limits:
+              cpu: '1'
+              memory: 4Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+            items:
+              - key: redis-config
+                path: redis.conf
+            defaultMode: 0644
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: csi-rbd-sc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  labels:
+    app: redis
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-external
+  labels:
+    app: redis-external
+spec:
+  type: NodePort
+  ports:
+    - name: redis
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis-config
+data:
+  redis-config: |
+    appendonly yes
+    protected-mode no
+    dir /data
+    port 6379
+    requirepass .+RpE9dYLO0Aew<3zQDz

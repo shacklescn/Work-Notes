@@ -48,6 +48,13 @@ spec:
           image: 'mysql:8.0.39'
           ports:
             - containerPort: 3306
+          resources:
+            requests:
+              cpu: 100m
+              memory: 500Mi
+            limits:
+              cpu: '4'
+              memory: 4Gi
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: SecA@2025...

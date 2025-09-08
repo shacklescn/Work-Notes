@@ -26,6 +26,9 @@ rbd -p <pool name> ls
 
 # 查看各个存储池所用空间
 ceph df
+
+# 扩容mgr节点至下列三台机器
+ceph orch apply mgr "ceph01;ceph02;ceph03"
 ```
 # FQA
 ## 1、Ceph osd 异常  处于autoout,exists状态

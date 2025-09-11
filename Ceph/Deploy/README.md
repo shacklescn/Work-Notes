@@ -841,7 +841,7 @@ Ceph 官网参考链接 https://docs.ceph.com/en/quincy/rbd/rbd-kubernetes/?high
 
 Ceph-csi 中参考链接 https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-rbd.md
 ### 1、Ceph Cluster集群操作
-#### 1.1创建对接kubernetes的存储池，存储池名为kubernetes
+#### 1.1、创建对接kubernetes的存储池，存储池名为kubernetes
 ```shell
 root@ceph-1:~# ceph osd pool create kubernetes
 pool 'kubernetes' created
@@ -871,733 +871,78 @@ election_strategy: 1
 2: [v2:10.2.0.27:3300/0,v1:10.2.0.27:6789/0] mon.ceph-3
 ```
 ### 2、部署CSI Plugin
-#### 2.1、Ceph-CSI 驱动与 Ceph 集群交互所需的配置信息（建议保持默认）
+#### 2.1、克隆项目
 ```shell
-root@master:~#cat ceph-config-map.yaml
----
-apiVersion: v1
-kind: ConfigMap
-data:
-  ceph.conf: |
-    [global]
-    auth_cluster_required = cephx
-    auth_service_required = cephx
-    auth_client_required = cephx
-  # keyring is a required key and its value should be empty
-  keyring: |
-metadata:
-  name: ceph-config
+git clone https://github.com/shacklescn/Work-Notes.git
 ```
-#### 2.2、配置 CSI驱动器的 ConfigMap文件，里面记录了ceph的mon节点IP:端口和clusterID
+#### 2.2、进入部署目录
 ```shell
-root@master:~#cat csi-config-map.yaml    #此文件需要修改，填写正确的clusterID，monitors 字段
----
-apiVersion: v1
-kind: ConfigMap
-data:
-  config.json: |-
-    [
-      {
-        "clusterID": "e48ba8d6-e341-11ee-8b2b-2799cf0b1efd",
-        "monitors": [
-          "10.2.0.25:6789,10.2.0.26:6789,10.2.0.27:6789"
-        ]
-      }
-    ]
-metadata:
-  name: ceph-csi-config
+cd Ceph/Deploy
+tar zxvf ceph-csi-deploy-canary.tar.gz 
+cd ceph-rbd-csi/csi/
 ```
-#### 2.3、ceph-csi 的最新版本需要一个额外的ConfigMap对象来定义密钥管理服务 (KMS) 提供程序的详细信息。因未设置 KMS，将空配置放入csi-kms-config-map.yaml
-```shell
-root@master:~#cat csi-kms-config-map.yaml
----
-apiVersion: v1
-kind: ConfigMap
-data:
-  config.json: |-
-    {}
-metadata:
-  name: ceph-csi-encryption-kms-config
+部署文件：https://github.com/shacklescn/Work-Notes/blob/main/Ceph/Deploy/ceph-csi-deploy-canary.tar.gz
 
-```
-#### 2.4、csi-provisioner-rbac.yaml、csi-provisioner-rbac.yaml 创建ceph-csi所需的ServiceAccout用户和RBAC认证鉴权文件，创建PV和PVC时需要在k8s中对一些资源进行增删操作，例如：PVC,PV，官方不建议进行修改
+#### 2.3、文件架构
 ```shell
-root@master:~#cat csi-provisioner-rbac.yaml
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: rbd-csi-provisioner
-  # replace with non-default namespace name
-  namespace: ceph
-
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: rbd-external-provisioner-runner
-rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["list", "watch", "create", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
-  - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
-    verbs: ["get", "list", "watch", "update"]
-  - apiGroups: [""]
-    resources: ["persistentvolumeclaims/status"]
-    verbs: ["update", "patch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["snapshot.storage.k8s.io"]
-    resources: ["volumesnapshots"]
-    verbs: ["get", "list", "patch"]
-  - apiGroups: ["snapshot.storage.k8s.io"]
-    resources: ["volumesnapshots/status"]
-    verbs: ["get", "list", "patch"]
-  - apiGroups: ["snapshot.storage.k8s.io"]
-    resources: ["volumesnapshotcontents"]
-    verbs: ["create", "get", "list", "watch", "update", "delete", "patch"]
-  - apiGroups: ["snapshot.storage.k8s.io"]
-    resources: ["volumesnapshotclasses"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update", "patch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments/status"]
-    verbs: ["patch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["csinodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["snapshot.storage.k8s.io"]
-    resources: ["volumesnapshotcontents/status"]
-    verbs: ["update", "patch"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["serviceaccounts"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["serviceaccounts/token"]
-    verbs: ["create"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: rbd-csi-provisioner-role
-subjects:
-  - kind: ServiceAccount
-    name: rbd-csi-provisioner
-    # replace with non-default namespace name
-    namespace: ceph
-roleRef:
-  kind: ClusterRole
-  name: rbd-external-provisioner-runner
-  apiGroup: rbac.authorization.k8s.io
-
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  # replace with non-default namespace name
-  namespace: ceph
-  name: rbd-external-provisioner-cfg
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["get", "watch", "list", "delete", "update", "create"]
-
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: rbd-csi-provisioner-role-cfg
-  # replace with non-default namespace name
-  namespace: ceph
-subjects:
-  - kind: ServiceAccount
-    name: rbd-csi-provisioner
-    # replace with non-default namespace name
-    namespace: ceph
-roleRef:
-  kind: Role
-  name: rbd-external-provisioner-cfg
-  apiGroup: rbac.authorization.k8s.io
+root@master3:~/qwx# tree ceph
+ceph
+├── ceph-cephfs-csi
+│   ├── csi
+│   │   ├── ceph-conf.yaml
+│   │   ├── csi-cephfsplugin-provisioner.yaml
+│   │   ├── csi-cephfsplugin.yaml
+│   │   ├── csi-config-map.yaml
+│   │   ├── csidriver.yaml
+│   │   ├── csi-kms-config-map.yaml
+│   │   ├── csi-nodeplugin-rbac.yaml
+│   │   ├── csi-provisioner-rbac.yaml
+│   │   ├── secret.yaml
+│   │   └── storageclass.yaml
+│   └── test
+│       ├── ceph-cephfs.yaml
+│       └── cephfs-pvc-demo.yaml
+└── ceph-rbd-csi
+    ├── csi
+    │   ├── ceph-config-map.yaml
+    │   ├── csi-config-map.yaml
+    │   ├── csi-CSIDriver.yaml
+    │   ├── csi-kms-config-map.yaml
+    │   ├── csi-nodeplugin-rbac.yaml
+    │   ├── csi-provisioner-rbac.yaml
+    │   ├── csi-rbdplugin-provisioner.yaml
+    │   ├── csi-rbdplugin.yaml
+    │   ├── csi-rbd-sc.yaml
+    │   └── csi-rbd-secret.yaml
+    ├── pvc
+    │   ├── raw-block-pvc.yaml
+    │   ├── raw-filesystem-pvc-v2.yaml
+    │   └── raw-filesystem-pvc.yaml
+    └── test
+        ├── ceph-rbd-demo.yaml
+        ├── raw-block-pod.yaml
+        ├── raw-filesystem-pvc.yaml
+        └── raw-static-filesystem-pvc.yaml
 ```
+#### 2.4、配置文件修改
 ```shell
-root@master:~# cat csi-nodeplugin-rbac.yaml
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: rbd-csi-nodeplugin
-  # replace with non-default namespace name
-  namespace: ceph
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: rbd-csi-nodeplugin
-rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get"]
-  # allow to read Vault Token and connection options from the Tenants namespace
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["serviceaccounts"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["list", "get"]
-  - apiGroups: [""]
-    resources: ["serviceaccounts/token"]
-    verbs: ["create"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: rbd-csi-nodeplugin
-subjects:
-  - kind: ServiceAccount
-    name: rbd-csi-nodeplugin
-    # replace with non-default namespace name
-    namespace: ceph
-roleRef:
-  kind: ClusterRole
-  name: rbd-csi-nodeplugin
-  apiGroup: rbac.authorization.k8s.io
+root@master:~# ll
+-rw-r--r-- 1 root root  579 Nov 13 13:59 ceph-config-map.yaml
+-rw-r--r-- 1 root root 5934 Nov 14 16:01 csi-config-map.yaml  #文件需要修改，填写正确的clusterID，monitors 字段
+-rw-r--r-- 1 root root 6588 Nov 14 16:02 csi-CSIDriver.yaml
+-rw-r--r-- 1 root root 3280 Nov 14 14:09 csi-kms-config-map.yaml
+-rw-r--r-- 1 root root  115 Nov 13 14:20 csi-nodeplugin-rbac.yaml
+-rw-r--r-- 1 root root  846 Nov 13 14:09 csi-provisioner-rbac.yaml
+-rw-r--r-- 1 root root 3000 Nov 13 14:09 csi-rbdplugin-provisioner.yaml   
+-rw-r--r-- 1 root root  164 Nov 13 14:09 csi-rbdplugin.yaml
+-rw-r--r-- 1 root root  405 Nov 14 14:30 csi-rbd-sc.yaml     #文件需要修改，填写正确的 clusterID，pool 字段
+-rw-r--r-- 1 root root 2673 Nov 14 16:10 csi-rbd-secret.yaml #文件需要修改，填写正确的userKey
 ```
-#### 2.5、创建StorageClass文件
-```shell
-root@master:~#csi-rbd-sc.yaml         # 此文件需要修改，填写正确的 clusterID，pool 字段
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-   name: csi-rbd-sc
-provisioner: rbd.csi.ceph.com
-parameters:
-   clusterID: e48ba8d6-e341-11ee-8b2b-2799cf0b1efd
-   pool: kubernetes
-   imageFeatures: layering
-   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/provisioner-secret-namespace: ceph
-   csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/controller-expand-secret-namespace: ceph
-   csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/node-stage-secret-namespace: ceph
-#reclaimPolicy: Retain
-allowVolumeExpansion: true
-reclaimPolicy: Delete
-#volumeBindingMode: WaitForFirstConsumer
-mountOptions:
-   - discard
-```
-#### 2.6、设置 cephx 凭据以便与 Ceph 集群通信。
-```shell
-root@master:~#cat csi-rbd-secret.yaml
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: csi-rbd-secret
-  namespace: ceph
-stringData:
-  userID: kubernetes
-  userKey: AQD12VVlvLB5GBAAF7DWL9Z6ATEsCsNvyhgbkg==
-```
-#### 2.7、ceph-csi配置器
-```shell
-root@master:~#cat csi-rbdplugin-provisioner.yaml
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-rbdplugin-provisioner
-  # replace with non-default namespace name
-  namespace: ceph
-  labels:
-    app: csi-metrics
-spec:
-  selector:
-    app: csi-rbdplugin-provisioner
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-
----
-kind: Deployment
-apiVersion: apps/v1
-metadata:
-  name: csi-rbdplugin-provisioner
-  # replace with non-default namespace name
-  namespace: ceph
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: csi-rbdplugin-provisioner
-  template:
-    metadata:
-      labels:
-        app: csi-rbdplugin-provisioner
-    spec:
-      serviceAccountName: rbd-csi-provisioner
-      priorityClassName: system-cluster-critical
-      containers:
-        - name: csi-provisioner
-          image: docker.io/qinwenxiang/csi-provisioner:v3.6.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--v=1"
-            - "--timeout=150s"
-            - "--retry-interval-start=500ms"
-            - "--leader-election=true"
-            #  set it to true to use topology based provisioning
-            - "--feature-gates=Topology=false"
-            - "--feature-gates=HonorPVReclaimPolicy=true"
-            - "--prevent-volume-mode-conversion=true"
-            # if fstype is not specified in storageclass, ext4 is default
-            - "--default-fstype=ext4"
-            - "--extra-create-metadata=true"
-          env:
-            - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: csi-snapshotter
-          image: docker.io/qinwenxiang/csi-snapshotter:v6.3.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--v=1"
-            - "--timeout=150s"
-            - "--leader-election=true"
-            - "--extra-create-metadata=true"
-          env:
-            - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: csi-attacher
-          image: docker.io/qinwenxiang/csi-attacher:v4.4.0
-          args:
-            - "--v=1"
-            - "--csi-address=$(ADDRESS)"
-            - "--leader-election=true"
-            - "--retry-interval-start=500ms"
-            - "--default-fstype=ext4"
-          env:
-            - name: ADDRESS
-              value: /csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: csi-resizer
-          image: docker.io/qinwenxiang/csi-resizer:v1.9.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--v=1"
-            - "--timeout=150s"
-            - "--leader-election"
-            - "--retry-interval-start=500ms"
-            - "--handle-volume-inuse-error=false"
-            - "--feature-gates=RecoverVolumeExpansionFailure=true"
-          env:
-            - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: csi-rbdplugin
-          # for stable functionality replace canary with latest release version
-          image: docker.io/qinwenxiang/cephcsi:canary
-          args:
-            - "--nodeid=$(NODE_ID)"
-            - "--type=rbd"
-            - "--controllerserver=true"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
-            - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--pidlimit=-1"
-            - "--rbdhardmaxclonedepth=8"
-            - "--rbdsoftmaxclonedepth=4"
-            - "--enableprofiling=false"
-            - "--setmetadata=true"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            # - name: KMS_CONFIGMAP_NAME
-            #   value: encryptionConfig
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-            - name: CSI_ADDONS_ENDPOINT
-              value: unix:///csi/csi-addons.sock
-          imagePullPolicy: "IfNotPresent"
-              volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - mountPath: /dev
-              name: host-dev
-            - mountPath: /sys
-              name: host-sys
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: ceph-csi-encryption-kms-config
-              mountPath: /etc/ceph-csi-encryption-kms-config/
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-            - name: ceph-config
-              mountPath: /etc/ceph/
-            - name: oidc-token
-              mountPath: /run/secrets/tokens
-              readOnly: true
-        - name: csi-rbdplugin-controller
-          # for stable functionality replace canary with latest release version
-          image: docker.io/qinwenxiang/cephcsi:canary
-          args:
-            - "--type=controller"
-            - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--drivernamespace=$(DRIVER_NAMESPACE)"
-            - "--setmetadata=true"
-          env:
-            - name: DRIVER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-           - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-            - name: ceph-config
-              mountPath: /etc/ceph/
-        - name: liveness-prometheus
-          image: docker.io/qinwenxiang/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
-      volumes:
-        - name: host-dev
-          hostPath:
-            path: /dev
-        - name: host-sys
-          hostPath:
-            path: /sys
-        - name: lib-modules
-          hostPath:
-            path: /lib/modules
-        - name: socket-dir
-          emptyDir: {
-            medium: "Memory"
-          }
-        - name: ceph-config
-          configMap:
-            name: ceph-config
-        - name: ceph-csi-config
-          configMap:
-            name: ceph-csi-config
-        - name: ceph-csi-encryption-kms-config
-          configMap:
-            name: ceph-csi-encryption-kms-config
-        - name: keys-tmp-dir
-          emptyDir: {
-            medium: "Memory"
-          }
-        - name: oidc-token
-          projected:
-            sources:
-              - serviceAccountToken:
-                  path: oidc-token
-                  expirationSeconds: 3600
-                  audience: ceph-csi-kms
-```
-#### 2.8、节点插件，负责每个节点都能与ceph集群正常交互
-```shell
-root@master:~#cat csi-rbdplugin.yaml
----
-kind: DaemonSet
-apiVersion: apps/v1
-metadata:
-  name: csi-rbdplugin
-  # replace with non-default namespace name
-  namespace: ceph
-spec:
-  selector:
-    matchLabels:
-      app: csi-rbdplugin
-  template:
-    metadata:
-      labels:
-        app: csi-rbdplugin
-    spec:
-      serviceAccountName: rbd-csi-nodeplugin
-      hostNetwork: true
-      hostPID: true
-      priorityClassName: system-node-critical
-      # to use e.g. Rook orchestrated cluster, and mons' FQDN is
-      # resolved through k8s service, set dns policy to cluster first
-      dnsPolicy: ClusterFirstWithHostNet
-      containers:
-        - name: driver-registrar
-          # This is necessary only for systems with SELinux, where
-          # non-privileged sidecar containers cannot access unix domain socket
-          # created by privileged CSI driver container.
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: docker.io/qinwenxiang/csi-node-driver-registrar:v2.9.0
-          args:
-            - "--v=1"
-           - "--csi-address=/csi/csi.sock"
-            - "--kubelet-registration-path=/var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock"
-          env:
-            - name: KUBE_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - name: registration-dir
-              mountPath: /registration
-        - name: csi-rbdplugin
-          securityContext:
-            privileged: true
-            capabilities:
-              add: ["SYS_ADMIN"]
-            allowPrivilegeEscalation: true
-          # for stable functionality replace canary with latest release version
-          image: docker.io/qinwenxiang/cephcsi:canary
-          args:
-            - "--nodeid=$(NODE_ID)"
-            - "--pluginpath=/var/lib/kubelet/plugins"
-            - "--stagingpath=/var/lib/kubelet/plugins/kubernetes.io/csi/"
-            - "--type=rbd"
-            - "--nodeserver=true"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
-            - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--enableprofiling=false"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            # - name: KMS_CONFIGMAP_NAME
-            #   value: encryptionConfig
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
-            - name: CSI_ADDONS_ENDPOINT
-              value: unix:///csi/csi-addons.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-            - mountPath: /dev
-              name: host-dev
-            - mountPath: /sys
-              name: host-sys
-            - mountPath: /run/mount
-              name: host-mount
-            - mountPath: /etc/selinux
-              name: etc-selinux
-              readOnly: true
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: true
-            - name: ceph-csi-config
-              mountPath: /etc/ceph-csi-config/
-            - name: ceph-csi-encryption-kms-config
-              mountPath: /etc/ceph-csi-encryption-kms-config/
-            - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins
-              mountPropagation: "Bidirectional"
-            - name: mountpoint-dir
-              mountPath: /var/lib/kubelet/pods
-              mountPropagation: "Bidirectional"
-            - name: keys-tmp-dir
-              mountPath: /tmp/csi/keys
-            - name: ceph-logdir
-              mountPath: /var/log/ceph
-            - name: ceph-config
-              mountPath: /etc/ceph/
-            - name: oidc-token
-              mountPath: /run/secrets/tokens
-              readOnly: true
-        - name: liveness-prometheus
-          securityContext:
-            privileged: true
-            allowPrivilegeEscalation: true
-          image: docker.io/qinwenxiang/cephcsi:canary
-          args:
-            - "--type=liveness"
-            - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
-            - "--metricspath=/metrics"
-            - "--polltime=60s"
-            - "--timeout=3s"
-          env:
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-              fieldPath: status.podIP
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
-      volumes:
-        - name: socket-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
-            type: DirectoryOrCreate
-        - name: plugin-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins
-            type: Directory
-        - name: mountpoint-dir
-          hostPath:
-            path: /var/lib/kubelet/pods
-            type: DirectoryOrCreate
-        - name: ceph-logdir
-          hostPath:
-            path: /var/log/ceph
-            type: DirectoryOrCreate
-        - name: registration-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins_registry/
-            type: Directory
-        - name: host-dev
-          hostPath:
-            path: /dev
-        - name: host-sys
-          hostPath:
-            path: /sys
-        - name: etc-selinux
-         hostPath:
-            path: /etc/selinux
-        - name: host-mount
-          hostPath:
-            path: /run/mount
-        - name: lib-modules
-          hostPath:
-            path: /lib/modules
-        - name: ceph-config
-          configMap:
-            name: ceph-config
-        - name: ceph-csi-config
-          configMap:
-            name: ceph-csi-config
-        - name: ceph-csi-encryption-kms-config
-          configMap:
-            name: ceph-csi-encryption-kms-config
-        - name: keys-tmp-dir
-          emptyDir: {
-            medium: "Memory"
-          }
-        - name: oidc-token
-          projected:
-            sources:
-              - serviceAccountToken:
-                  path: oidc-token
-                  expirationSeconds: 3600
-                  audience: ceph-csi-kms
----
-# This is a service to expose the liveness metrics
-apiVersion: v1
-kind: Service
-metadata:
-  name: csi-metrics-rbdplugin
-  # replace with non-default namespace name
-  namespace: ceph
-  labels:
-    app: csi-metrics
-spec:
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-  selector:
-    app: csi-rbdplugin
-```
-#### 2.9、创建名称空间
+#### 2.5、创建名称空间
 ```shell
 root@master:~#kubectl create ns ceph
 ```
-#### 2.10、apply配置文件
+#### 2.6、apply配置文件
 ```shell
 kubectl apply -f csi-config-map.yaml -n ceph
 kubectl apply -f csi-kms-config-map.yaml -n ceph
@@ -1608,45 +953,14 @@ kubectl apply -f csi-nodeplugin-rbac.yaml -n ceph
 kubectl apply -f csi-rbdplugin-provisioner.yaml -n ceph
 kubectl apply -f csi-rbdplugin.yaml -n ceph
 kubectl apply -f csi-rbd-sc.yaml -n ceph
+kubectl apply -f csi-CSIDriver.yaml -n ceph
 ```
-#### 2.11、测试能否声明PVC申请PV,Pod能否挂载PV使用
+#### 2.7、测试能否正常使用
 有两种PVC文件,第一种是可以直接被Pod所挂载
+测试挂载文件系统方式的测试
 ```shell
-root@master:~# cat raw-filesystem-pvc.yaml 
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data
-spec:
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: Filesystem #挂载至/路径的方式
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: csi-rbd-sc
-```
-第二种是挂载为设备文件
-```shell
-root@master:~# cat pvc/raw-block-pvc.yaml 
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: raw-block-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: Block
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: csi-rbd-sc
-```
-创建并应用PVC文件
-```shell
-kubectl apply -f raw-filesystem-pvc.yaml  -n ceph
+cd ../test
+kubectl apply -f raw-filesystem-pvc.yaml  -f ceph-rbd-demo.yaml -n ceph
 ```
 测试Pod文件
 ```shell
@@ -1658,7 +972,7 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels: #rs or deployment
+    matchLabels:
       app: testing
   template:
     metadata:
@@ -1676,7 +990,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: data
-
 ```
 创建并应用Pod文件
 ```shell
@@ -1688,21 +1001,31 @@ root@master:~# kubectl get pod -n ceph
 NAME                                           READY   STATUS    RESTARTS   AGE
 ceph-rbd-2-56c596f786-p7n52                    1/1     Running   0          10s
 ```
-验证ceph集群中是kubernetes存储池中是否有image创建
+验证ceph集群中是kubernetes存储池中是否有image创建或者在Pod中执行```df -h``` 会出现一个/dev/rbd0  的挂载文件
 ```shell
 root@ceph-1:~# rbd ls --pool kubernetes
 csi-vol-cabc6db4-d94e-4722-bd12-f50fd47f62ac
 ```
 ## Ceph CephFS CSI 部署
 Ceph-csi 中参考链接 https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-cephfs.md
-### 1、 Ceph 集群配置
+### 1、Ceph 集群配置
 ```shell
 root@ceph-1:~# ceph fs volume create cephfs     
 root@ceph-1:~# ceph fs subvolume create cephfs csi
 root@ceph-1:~# ceph fs subvolumegroup create cephfs csi
 ```
-### 2、kubernetes操作
-部署文件：https://shackles.cn/Software/ceph-csi.tar.gz
+### 2、配置文件修改
+#### 2.1、克隆项目
+```shell
+git clone https://github.com/shacklescn/Work-Notes.git
+```
+#### 2.2、进入部署目录并解压csi配置文件压缩包
+```shell
+cd Ceph/Deploy
+tar zxvf ceph-csi-deploy-canary.tar.gz 
+cd ceph/ceph-cephfs-csi/csi/
+```
+部署文件：https://github.com/shacklescn/Work-Notes/blob/main/Ceph/Deploy/ceph-csi-deploy-canary.tar.gz
 ```shell
 root@master:~# ll
 -rw-r--r-- 1 root root  579 Nov 13 13:59 ceph-conf.yaml
@@ -1724,6 +1047,7 @@ root@master:~# ll
 - csi-provisioner-rbac.yaml：CSI存储卷供应器（provisioner）对集群的 RBAC认证授权文件
 - secret.yaml：ceph集群客户端访问用户和token信息
 - storageclass.yaml：存储类配置文件信息
+#### 2.3、测试csi是否可用
 创建测试PVC文件
 ```shell
 root@master:~#cat cephfs-pvc-demo.yaml 

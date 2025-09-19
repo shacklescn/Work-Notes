@@ -143,6 +143,7 @@ offline-debs         slurm-smd_25.05.3-1_amd64.build  slurm-smd-client_25.05.3-1
 ```
 其中```slurm-smd_25.05.3-1_amd64.build```  ```slurm-smd_25.05.3-1_amd64.buildinfo```  ```slurm-smd_25.05.3-1_amd64.changes```是构建时的日志或者调试信息可忽略，其他的deb包才是安装slurm要用的
 
+编译好的deb包：链接：https://pan.quark.cn/s/e08504d51728
 ## 控制节点配置
 ### 安装对应的slurm包
 ```shell

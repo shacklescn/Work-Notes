@@ -1,4 +1,18 @@
 # Slurm使用手册
+## 常用指令
+```shell
+# 重新加载 slurmctld和 slurmd配置文件
+sudo scontrol reconfigure
+
+# 节点状态查看
+sinfo
+
+# 查看当前用户下运行的作业
+squeue
+
+# 查看指定用户下运行的作业
+squeue -u <USERNAME>
+```
 ## 节点状态查看
 用sinfo可以查看现有的节点、分区、可用状态、作业时间限制、节点数量
 ```shell

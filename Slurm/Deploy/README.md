@@ -680,21 +680,6 @@ cpu          up   infinite      4   idle server[2-5]
 memory       up   infinite      4   idle server[2-5]
 gpu*         up   infinite      2   idle server[2-3]
 ```
-## RESTAPI 节点部署
-### 安装对应的slurm包
-```shell
-apt install ./slurm-smd_25.05.3-1_amd64.deb \
-    ./slurm-smd-slurmd_25.05.3-1_amd64.deb \
-    ./slurm-smd-slurmrestd_25.05.3-1_amd64.deb
-```
-### 创建本地服务帐户和组 运行 slurmrestd 守护进程。
-```shell
-sudo useradd -M -r -s /usr/sbin/nologin -U slurmrestd
-```
-### 复制控制节点中的```/etc/slurm/slurm.conf```到```/etc/slurm/```
-```shell
-scp <控制节点IP>:/etc/slurm/slurm.conf /etc/slurm/
-```
 # 无配置(configless)模式
 ## DBD 节点配置
 ### 安装MySQL
@@ -1130,6 +1115,9 @@ NodeName=server4 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCo
 ```shell
 echo "NodeName=server3 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2" >> /etc/slurm/slurm.conf
 echo "NodeName=server4 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988" >> /etc/slurm/slurm.conf
+
+# 重新加载 slurmctld和 slurmd配置文件
+sudo scontrol reconfigure
 ```
 > 注意：注册计算节点时，需要在集群内控制节点统一配置，之后使用scp指令 下发至每个计算节点，下发完成后重启服务生效
 ### 修改slurmd的service文件
@@ -1239,14 +1227,570 @@ gpu          up   infinite      2   idle server[2-3]
 ### 安装对应的slurm包
 ```shell
 apt install ./slurm-smd_25.05.3-1_amd64.deb \
-    ./slurm-smd-slurmd_25.05.3-1_amd64.deb \
-    ./slurm-smd-slurmrestd_25.05.3-1_amd64.deb
+    ./slurm-smd-slurmrestd_25.05.3-1_amd64.deb \
+    ./slurm-smd-client_25.05.3-1_amd64.deb
 ```
 ### 创建本地服务帐户和组 运行 slurmrestd 守护进程。
 ```shell
 sudo useradd -M -r -s /usr/sbin/nologin -U slurmrestd
 ```
-### 复制控制节点中的```/etc/slurm/slurm.conf```到```/etc/slurm/```
+### 配置jwt认证（在控制节点操作）
+#### 1. 安装jwt 软件包
 ```shell
-scp <控制节点IP>:/etc/slurm/slurm.conf /etc/slurm/
+apt install libjwt0 libjwt-dev
+```
+#### 2. 将相同的 JWT 密钥添加到slurmctld 和 slurmdbd。
+仅对于控制器，建议将 JWT 密钥放在 StateSaveLocation 中。
+例如，使用 /var/spool/slurm/statesave/：
+```shell
+mkdir -p /var/spool/slurm/statesave/
+dd if=/dev/random of=/var/spool/slurm/statesave/jwt_hs256.key bs=32 count=1
+chown slurm：slurm /var/spool/slurm/statesave/jwt_hs256.key 
+chmod 0600 /var/spool/slurm/statesave/jwt_hs256.key 
+chown slurm：slurm /var/spool/slurm/statesave 
+chmod 0755 /var/spool/slurm/statesave
+```
+#### 3. 在 slurm.conf 和 slurmdbd.conf 中，添加 JWT 作为替代身份验证类型
+```shell
+AuthAltTypes=auth/jwt 
+AuthAltParameters=jwt_key=/var/spool/slurm/statesave/jwt_hs256.key
+```
+#### 4. 重启 slurmctld
+```shell
+systemctl restart slurmctld.service
+```
+> 注意：重启完slurmctld后，需要重载全部计算节点的服务，不然slurmctld服务会报错 配置文件会不一致
+#### 5. 根据需要为用户创建令牌
+```shell
+# 给当前用户创建jwt key 默认有效期 1800s
+scontrol token 
+
+# 给指定用户创建jwt key 默认有效期 1800s
+scontrol token username=<用户名>
+
+# 创建时设置有效期
+scontrol token username=qwx lifespan=7200
+```
+> 注意：管理员可以通过在 slurm.conf 中设置AuthAltParameters=disable_token_creation参数来阻止用户生成令牌
+### 创建RESTAPI所需```slurm.conf```文件
+```shell
+ClusterName=cool
+SlurmctldHost=server2
+SlurmctldPort=6817
+
+AuthType=auth/munge
+```
+### 编辑slurmrestd环境变量文件
+```shell
+cat > /etc/default/slurmrestd << EOF
+SLURMRESTD_OPTIONS="-a rest_auth/jwt -s openapi/slurmctld -f /etc/slurm/slurm.conf :6820"
+EOF
+```
+### 编辑slurmrestd服务文件并重启
+```shell
+cat > /lib/systemd/system/slurmrestd.service << EOF
+[Unit]
+Description=Slurm REST daemon
+After=network-online.target remote-fs.target slurmctld.service
+Wants=network-online.target
+ConditionPathExists=/etc/slurm/slurm.conf
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/slurmrestd
+User=slurmrestd
+Group=slurmrestd
+ExecStart=/usr/sbin/slurmrestd $SLURMRESTD_OPTIONS
+Environment=SLURM_JWT=daemon
+ExecReload=/bin/kill -HUP $MAINPID
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl restart slurmrestd
+```
+> 注意：服务启动后会有以下两个报错，可忽略
+> 
+> error: Couldn't find the specified plugin name for tls/s2n looking at all files
+> 
+> error: cannot find tls plugin for tls/s2n
+### 测试slurmrestd是否正常工作
+#### 1. 查看分区
+```shell
+curl -H "X-SLURM-USER-NAME: qwx" \
+     -H "X-SLURM-USER-TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTg2MTQzNDcsImlhdCI6MTc1ODYxMjU0Nywic3VuIjoicXd4In0.0SHHnc_3viOMfvRv1-Ci3hG59msflep4jweCt-RNRhs" \
+     http://server7:6820/slurm/v0.0.42/partitions
+{
+  "partitions": [
+    {
+      "nodes": {
+        "allowed_allocation": "",
+        "configured": "server[2-5]",
+        "total": 4
+      },
+      "accounts": {
+        "allowed": "",
+        "deny": ""
+      },
+      "groups": {
+        "allowed": ""
+      },
+      "qos": {
+        "allowed": "",
+        "deny": "",
+        "assigned": ""
+      },
+      "alternate": "",
+      "tres": {
+        "billing_weights": "",
+        "configured": "cpu=208,mem=1063398M,node=4,billing=208"
+      },
+      "cluster": "",
+      "select_type": [
+      ],
+      "cpus": {
+        "task_binding": 0,
+        "total": 208
+      },
+      "defaults": {
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "time": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "job": ""
+      },
+      "grace_time": 0,
+      "maximums": {
+        "cpus_per_node": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "cpus_per_socket": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "nodes": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "shares": 1,
+        "oversubscribe": {
+          "jobs": 1,
+          "flags": [
+          ]
+        },
+        "time": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "over_time_limit": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "minimums": {
+        "nodes": 0
+      },
+      "name": "cpu",
+      "node_sets": "",
+      "priority": {
+        "job_factor": 1,
+        "tier": 1
+      },
+      "timeouts": {
+        "resume": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "suspend": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "partition": {
+        "state": [
+          "UP"
+        ]
+      },
+      "suspend_time": {
+        "set": false,
+        "infinite": false,
+        "number": 0
+      }
+    },
+    {
+      "nodes": {
+        "allowed_allocation": "",
+        "configured": "server[2-5]",
+        "total": 4
+      },
+      "accounts": {
+        "allowed": "",
+        "deny": ""
+      },
+      "groups": {
+        "allowed": ""
+      },
+      "qos": {
+        "allowed": "",
+        "deny": "",
+        "assigned": ""
+      },
+      "alternate": "",
+      "tres": {
+        "billing_weights": "",
+        "configured": "cpu=208,mem=1063398M,node=4,billing=208"
+      },
+      "cluster": "",
+      "select_type": [
+      ],
+      "cpus": {
+        "task_binding": 0,
+        "total": 208
+      },
+      "defaults": {
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "time": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "job": ""
+      },
+      "grace_time": 0,
+      "maximums": {
+        "cpus_per_node": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "cpus_per_socket": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "nodes": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "shares": 1,
+        "oversubscribe": {
+          "jobs": 1,
+          "flags": [
+          ]
+        },
+        "time": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "over_time_limit": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "minimums": {
+        "nodes": 0
+      },
+      "name": "mem_nodes",
+      "node_sets": "",
+      "priority": {
+        "job_factor": 1,
+        "tier": 1
+      },
+      "timeouts": {
+        "resume": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "suspend": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "partition": {
+        "state": [
+          "UP"
+        ]
+      },
+      "suspend_time": {
+        "set": false,
+        "infinite": false,
+        "number": 0
+      }
+    },
+    {
+      "nodes": {
+        "allowed_allocation": "",
+        "configured": "server[2-3]",
+        "total": 2
+      },
+      "accounts": {
+        "allowed": "",
+        "deny": ""
+      },
+      "groups": {
+        "allowed": ""
+      },
+      "qos": {
+        "allowed": "",
+        "deny": "",
+        "assigned": ""
+      },
+      "alternate": "",
+      "tres": {
+        "billing_weights": "",
+        "configured": "cpu=192,mem=1031422M,node=2,billing=192"
+      },
+      "cluster": "",
+      "select_type": [
+      ],
+      "cpus": {
+        "task_binding": 0,
+        "total": 192
+      },
+      "defaults": {
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "time": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "job": ""
+      },
+      "grace_time": 0,
+      "maximums": {
+        "cpus_per_node": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "cpus_per_socket": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "memory_per_cpu": 0,
+        "partition_memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "partition_memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "nodes": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "shares": 1,
+        "oversubscribe": {
+          "jobs": 1,
+          "flags": [
+          ]
+        },
+        "time": {
+          "set": false,
+          "infinite": true,
+          "number": 0
+        },
+        "over_time_limit": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "minimums": {
+        "nodes": 0
+      },
+      "name": "gpu",
+      "node_sets": "",
+      "priority": {
+        "job_factor": 1,
+        "tier": 1
+      },
+      "timeouts": {
+        "resume": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "suspend": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "partition": {
+        "state": [
+          "UP"
+        ]
+      },
+      "suspend_time": {
+        "set": false,
+        "infinite": false,
+        "number": 0
+      }
+    }
+  ],
+  "last_update": {
+    "set": true,
+    "infinite": false,
+    "number": 1758612639
+  },
+  "meta": {
+    "plugin": {
+      "type": "openapi\/slurmctld",
+      "name": "Slurm OpenAPI slurmctld",
+      "data_parser": "data_parser\/v0.0.42",
+      "accounting_storage": ""
+    },
+    "client": {
+      "source": "server7:6820(fd:10)",
+      "user": "root",
+      "group": "root"
+    },
+    "command": [
+    ],
+    "slurm": {
+      "version": {
+        "major": "25",
+        "micro": "3",
+        "minor": "05"
+      },
+      "release": "25.05.3",
+      "cluster": "cool"
+    }
+  },
+  "errors": [
+  ],
+  "warnings": [
+    {
+      "description": "Slurm accounting storage is disabled. Could not query the following: [TRES].",
+      "source": ""
+    }
+  ]
+}
+```
+#### 2. 查看作业队列
+```shell
+curl -H "X-SLURM-USER-NAME: qwx" \
+     -H "X-SLURM-USER-TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTg2MTQzNDcsImlhdCI6MTc1ODYxMjU0Nywic3VuIjoicXd4In0.0SHHnc_3viOMfvRv1-Ci3hG59msflep4jweCt-RNRhs" \
+     http://server7:6820/slurm/v0.0.42/jobs
+{
+  "jobs": [
+  ],
+  "last_backfill": {
+    "set": true,
+    "infinite": false,
+    "number": 1758605397
+  },
+  "last_update": {
+    "set": true,
+    "infinite": false,
+    "number": 1758612568
+  },
+  "meta": {
+    "plugin": {
+      "type": "openapi\/slurmctld",
+      "name": "Slurm OpenAPI slurmctld",
+      "data_parser": "data_parser\/v0.0.42",
+      "accounting_storage": ""
+    },
+    "client": {
+      "source": "server7:6820(fd:10)",
+      "user": "root",
+      "group": "root"
+    },
+    "command": [
+    ],
+    "slurm": {
+      "version": {
+        "major": "25",
+        "micro": "3",
+        "minor": "05"
+      },
+      "release": "25.05.3",
+      "cluster": "cool"
+    }
+  },
+  "errors": [
+  ],
+  "warnings": [
+    {
+      "description": "Zero jobs to dump",
+      "source": ""
+    }
+  ]
+}
 ```

@@ -277,7 +277,7 @@ EOF
 ```
 ### 创建PID目录并授权
 ```shell
-sudo mkdir -p /run/slurmdbd && sudo chown slurm:slurm /run/slurmdbd
+sudo mkdir -p /run/slurmdbd && sudo chown slurm:slurm /run/slurmdbd /etc/slurm/slurmdbd.conf && chmod 600 /etc/slurm/slurmdbd.conf
 ```
 ### 启动 slurmdbd服务
 ```shell
@@ -809,7 +809,7 @@ EOF
 ```
 ### 创建PID目录并授权
 ```shell
-sudo mkdir -p /run/slurmdbd && sudo chown slurm:slurm /run/slurmdbd
+sudo mkdir -p /run/slurmdbd /var/log/slurm && sudo chown slurm:slurm /run/slurmdbd /var/log/slurm /etc/slurm/slurmdbd.conf && chmod 600 /etc/slurm/slurmdbd.conf
 ```
 ### 启动 slurmdbd服务
 ```shell

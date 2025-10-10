@@ -768,3 +768,49 @@ qwx        59886  0.0  0.0 238636  7732 ?        Sl   08:49   0:00 srun python3 
 qwx        59887  0.0  0.0   7140   756 ?        S    08:49   0:00 srun python3 test.py
 qwx        60091 80.4  0.2 16985564 1344784 ?    Sl   08:49   0:37 /usr/bin/python3 test.py
 ```
+## slurmrestd、slurmctld和slurmdbd的交互流程
+### 1. 用户请求发起
+```shell
+curl -H "X-SLURM-USER-NAME: root" \
+     -H "X-SLURM-USER-TOKEN: eyJh..." \
+     http://server7:6820/slurm/v0.0.42/partitions #查询分区信息
+```
+### 2. slurmrestd 接收到请求
+```shell
+Oct 10 09:39:08 server7 slurmrestd[64591]: debug:  _on_url: [server7:6820(fd:10)] url scheme:(null) path:/slurm/v0.0.42/partitions query:(null)
+Oct 10 09:39:08 server7 slurmrestd[64591]: [2025-10-10T09:39:08.504] operations_router: [server7:6820(fd:10)] GET /slurm/v0.0.42/partitions
+Oct 10 09:39:08 server7 slurmrestd[64591]: [2025-10-10T09:39:08.505] rest_auth/jwt: slurm_rest_auth_p_authenticate: [server7:6820(fd:10)] attempting user_name root token authentication pass through
+```
+- slurmrestd 收到 HTTP GET 请求，目标是 /slurm/v0.0.42/partitions
+- REST 层选择对应的处理器 operations_router。
+- slurmrestd 从请求头中提取 X-SLURM-USER-NAME 和 X-SLURM-USER-TOKEN。
+- 验证 JWT 是否有效（签名、时间、用户一致）。
+- 验证通过后，将身份 “root” 传入后续 RPC 请求。
+### 3. slurmrestd 调用 slurmctld（主控）
+```shell
+Oct 10 09:39:08 server2 slurmctld[262298]: [2025-10-10T09:39:08.507] debug3: _on_primary_connection: [server2:6817(fd:3)] PRIMARY: New RPC connection
+Oct 10 09:39:08 server2 slurmctld[262298]: [2025-10-10T09:39:08.508] debug2: Processing RPC: REQUEST_PARTITION_INFO from UID=0
+```
+- slurmrestd 打开了一条新的控制 RPC 连接。
+- slurmrestd 内部通过 Slurm RPC socket（默认端口 6817）连接到 slurmctld。
+- 它发起 REQUEST_PARTITION_INFO 请求，用于获取分区信息。
+- 这一步由 slurmctld 响应当前集群的实时分区数据。
+### 4. slurmrestd 同时与 slurmdbd 建立持久连接（会计初始化）
+```shell
+slurmrestd:
+    Oct 10 09:39:08 server7 slurmrestd[64591]: debug:  accounting_storage/slurmdbd: _connect_dbd_conn: Sent PersistInit msg
+slurmdbd:
+    Oct 10 09:39:08 server2 slurmdbd[262105]: [2025-10-10T09:39:08.512] debug:  REQUEST_PERSIST_INIT: CLUSTER:cool VERSION:11008 UID:0 IP:10.84.3.166 CONN:14
+```
+- slurmrestd 启动或第一次请求时的行为：建立到 slurmdbd 的“持久会计连接”。
+- slurmdbd 日志显示接收到 REQUEST_PERSIST_INIT，记录连接来源 IP、UID、Cluster 名称。
+- 若请求的数据类型（如作业、账户）涉及数据库，会进一步访问 MySQL。 
+此处请求仅查询分区信息，不依赖数据库内容，所以这次连接仅做初始化握手。
+### 5. slurmctld 返回数据 → slurmrestd → HTTP 响应
+```shell
+Oct 10 09:39:08 server7 slurmrestd[64591]: debug3: _call_handler: [server7:6820(fd:10)] END: calling handler: (0x7FBC7C471AB0) callback_tag 0 for path: /slurm/v0.0.42/partitions rc[0]=No error status[200]=OK
+```
+- slurmctld 将分区数据结构返回给 slurmrestd。
+- slurmrestd 将其序列化为 JSON 并返回 HTTP 200 OK 响应。
+此时 curl 会收到 JSON 格式的分区列表（如 debug, main, gpu 等）。
+![ID.png](image/ID.png)

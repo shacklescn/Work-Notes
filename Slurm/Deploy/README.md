@@ -1274,11 +1274,17 @@ scontrol token username=qwx lifespan=7200
 > 注意：管理员可以通过在 slurm.conf 中设置AuthAltParameters=disable_token_creation参数来阻止用户生成令牌
 ### 创建RESTAPI所需```slurm.conf```文件
 ```shell
+cat > /etc/slurm/slurm.conf << EOF
 ClusterName=cool
 SlurmctldHost=server2
 SlurmctldPort=6817
 
 AuthType=auth/munge
+
+AccountingStorageType=accounting_storage/slurmdbd
+AccountingStorageHost=server2
+AccountingStoragePort=6819
+EOF
 ```
 ### 编辑slurmrestd环境变量文件
 ```shell
@@ -1793,4 +1799,1349 @@ curl -H "X-SLURM-USER-NAME: qwx" \
     }
   ]
 }
+```
+## Slurm-Web
+离线安装包： https://pan.quark.cn/s/0ffb075efe0b
+```shell
+# 解压离线包
+tar zxvf slurm-web-offine-os22.04-v5.1.tar.gz 
+
+# 安装离线包
+cd slurm-web-offine
+apt install ./slurm-web-agent_*.deb ./slurm-web-gateway_*.deb
+```
+### 安装Racksdb
+```shell
+# 安装依赖
+apt install libcairo2-dev libgirepository1.0-dev
+
+# 安装racksdb
+apt install -y ./racksdb_0.5.0-1.ubuntu2404_all.deb
+
+# 引导数据库
+cp -r /usr/share/doc/python3-racksdb/examples/db/* /var/lib/racksdb/
+
+# 获取数据中心信息
+racksdb datacenters
+
+# 获取机架内容
+racksdb racks --name R1-A01 --format json
+
+# 获取基础架构中的计算节点列表
+racksdb nodes --infrastructure mercury --tags compute --list
+
+# 更改agent配置文件
+vim /etc/slurm-web/agent.ini
+...........
+[racksdb]
+
+# 控制是否启用 RacksDB 集成功能，用于高级资源可视化
+#
+# 默认值: yes
+enabled=no
+
+# RacksDB 数据库路径
+#
+# 默认值: /var/lib/racksdb
+db=/var/lib/racksdb
+
+# RacksDB 数据库模式(schema)路径
+#
+# 默认值: /usr/share/racksdb/schemas/racksdb.yml
+schema=/usr/share/racksdb/schemas/racksdb.yml
+
+# 站点特定的 RacksDB 模式扩展路径
+#
+# 默认值: /etc/racksdb/extensions.yml
+extensions=/etc/racksdb/extensions.yml
+
+# RacksDB 数据库绘图模式(schema)路径
+#
+# 默认值: /usr/share/racksdb/schemas/drawings.yml
+drawings_schema=/usr/share/racksdb/schemas/drawings.yml
+
+# 集群在 RacksDB 中对应的基础设施名称。默认使用集群名
+#infrastructure=atlas
+infrastructure=mercury
+
+# 应用于 RacksDB 数据库中计算节点的标签列表
+#
+# 默认值:
+# - compute
+tags=
+  compute
+```
+### 安装Redis
+```shell
+cat > redis.conf << EOF
+# 基本设置
+bind 0.0.0.0
+protected-mode yes
+port 6379
+tcp-backlog 511
+
+# 安全 / 认证
+# 请将下面的密码换为你自己的强密码
+requirepass SecA@2025...
+
+# 客户端超时（秒），0 表示关闭
+timeout 0
+
+# 日志
+loglevel notice
+# 空字符串表示输出到 stdout（容器环境常用）
+logfile ""
+syslog-enabled no
+
+# 数据库
+databases 16
+
+# 持久化：RDB 快照配置（可选，同时可以使用 AOF）
+save 900 1
+save 300 10
+save 60 10000
+
+# 快照压缩（默认 yes）
+rdbcompression yes
+
+# RDB 文件位置
+dir /data
+dbfilename dump.rdb
+
+# AOF（追加式日志）配置，推荐在生产开启
+appendonly yes
+appendfilename "appendonly.aof"
+# always = 每条写操作都 fsync； everysec = 每秒 fsync； no = 由操作系统决定（性能最优但有风险）
+# 生产一般选择 everysec
+appendfsync everysec
+# 重写策略
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+
+# 限制内存（可根据机器规格调整）
+# maxmemory 2gb
+# maxmemory-policy volatile-lru
+
+# 客户端连接 / 管道
+client-output-buffer-limit pubsub 32mb 8mb 60
+client-output-buffer-limit slave 256mb 64mb 60
+client-output-buffer-limit normal 0 0 0
+
+# 性能 / IO 调优
+activerehashing yes
+lazyfree-lazy-eviction yes
+lazyfree-lazy-expire yes
+lazyfree-lazy-server-del yes
+
+# 复制 / 主从（如不需要可保留默认注释）
+# replicaof <masterip> <masterport>
+# masterauth <masterpassword>
+
+# 安全 / 限制
+# 禁止 CONFIG 命令、重写等敏感操作（可启用 ACL，更细粒度控制）
+# rename-command CONFIG ""
+# rename-command SHUTDOWN ""
+# rename-command FLUSHDB ""
+# rename-command FLUSHALL ""
+EOF
+```
+```shell
+cat > docker-compose.yaml << EOF
+services:
+  redis:
+    image: redis:8.2.2
+    container_name: redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./redis_data:/data
+    restart: unless-stopped
+EOF
+
+#启动redis
+docker-compose up -d
+```
+### 配置slurm-web-agent
+```shell
+cat > /etc/slurm-web/agent.ini << EOF
+# This file is an example configuration file for Slurm-web agent
+#
+# Please DO NOT USE THIS FILE as a basis for your custom
+# /etc/slurm-web/agent.ini.
+
+[service]
+
+# Name of cluster served by agent
+#
+# This parameter is required.  # 需修改为slurm集群名称
+cluster=cool   
+
+# Interface address to bind for incoming connections
+#
+# Default value: localhost  #默认端口只能本机访问  如果想让外部访问需设置IP
+interface=10.84.3.164
+
+# TCP port to listen for incoming connections
+#
+# Default value: 5012
+port=5012
+
+# When true, Cross-Origin Resource Sharing (CORS) headers are enabled.
+cors=no
+
+# Enable debug mode
+debug=no
+
+# List of log flags to enable. Special value `ALL` enables all log flags.
+#
+# Possible values:
+# - slurmweb
+# - rfl
+# - werkzeug
+# - urllib3
+# - racksdb
+# - ALL
+#
+# Default value:
+# - ALL
+log_flags=
+  ALL
+
+# List of debug flags to enable. Special value `ALL` enables all debug
+# flags.
+#
+# Possible values:
+# - slurmweb
+# - rfl
+# - werkzeug
+# - urllib3
+# - racksdb
+# - ALL
+#
+# Default value:
+# - slurmweb
+debug_flags=
+  slurmweb
+
+[slurmrestd]
+
+# URI to slurmrestd HTTP server. It can either be in the form
+# http://host:port for TCP/IP server or unix:///path/to/slurmrestd.socket
+# for Unix socket.
+#
+# Default value: unix:/run/slurmrestd/slurmrestd.socket # slurmrestd的连接端口
+uri=http://server7:6820
+
+# Authentication method with slurmrestd.
+#
+# The `jwt` authentication method is supported by both TCP/IP and Unix
+# sockets URIs.
+#
+# Note that `local` authentication method is only supported with Unix socket
+# URI and Slurm <= 24.11. With this method, Slurm-web agent must run with
+# the _slurm_ system user as well as `slurmrestd` service. Running
+# `slurmrestd` as _slurm_ system user is not possible with Slurm >= 25.05.
+#
+# Possible values:
+# - local
+# - jwt
+#
+# Default value: jwt
+auth=jwt
+
+# Slurmrestd JWT authentication mode, either _auto_ or _static_.
+#
+# In _auto_ mode, Slurm-web agent generates tokens with the signature key
+# specified in `jwt_key`. The tokens have a limited lifespan as defined with
+# `jwt_lifespan`. Tokens are automatically renewed upon expiration. This is
+# the recommended mode.
+#
+# In _static_ mode, Slurm-web simply use the token provided with
+# `jwt_token`.
+#
+# This parameter is used only when `auth` is _jwt_.
+#
+# Possible values:
+# - auto
+# - static
+#
+# Default value: auto
+jwt_mode=auto
+
+# The user name used in HTTP headers with JWT authentication.
+#
+# This parameter is used only when `auth` is _jwt_.
+#
+# Default value: slurm
+jwt_user=slurm
+
+# Lifespan of JWT tokens generated by Slurm-web in seconds. The default
+# value is 1 hour.
+#
+# This parameter is used only when `auth` is _jwt_ and `jwt_mode` is _auto_.
+#
+# Default value: 3600
+jwt_lifespan=3600
+
+# Path to private key shared with Slurm for JWT signature. The key is used
+# by Slurm-web to generate its token for authentication on slurmrestd in
+# _auto_ mode. It must be the same key as used in Slurm `AuthAltParameters`
+# so that Slurm services can validate JWT generated by Slurm-web.
+#
+# This parameter is used only when `auth` is _jwt_  and `jwt_mode` is
+# _auto_.
+#
+# Default value: /var/lib/slurm-web/slurmrestd.key
+jwt_key=/var/lib/slurm-web/slurmrestd.key
+
+# The static JSON Web Token (JWT) used in HTTP headers with JWT
+# authentication, typically generated with `scontrol token`. While this is
+# generally not a good practice, it is recommended to generate tokens with
+# infinite lifespan to avoid failures due to expired token.
+#
+# This parameter is used only when `auth` is _jwt_ and `jwt_mode` is
+# _static_.
+jwt_token=None
+
+# Slurm REST API version.
+#
+# CAUTION: You SHOULD NOT change this parameter unless you really know what
+# you are doing. This parameter is more intented for Slurm-web developers
+# rather than end users. Slurm-web is officially tested and validated with
+# the default value only.
+#
+# Default value: 0.0.41
+version=0.0.41
+
+[filters]
+
+# List of jobs fields selected in slurmrestd API when retrieving a list of
+# jobs, all other fields arefiltered out.
+#
+# Default value:
+# - account
+# - cpus
+# - gres_detail
+# - job_id
+# - job_state
+# - node_count
+# - nodes
+# - partition
+# - priority
+# - qos
+# - sockets_per_node
+# - state_reason
+# - tasks
+# - tres_per_job
+# - tres_per_node
+# - tres_per_socket
+# - tres_per_task
+# - user_name
+jobs=
+  account
+  cpus
+  gres_detail
+  job_id
+  job_state
+  node_count
+  nodes
+  partition
+  priority
+  qos
+  sockets_per_node
+  state_reason
+  tasks
+  tres_per_job
+  tres_per_node
+  tres_per_socket
+  tres_per_task
+  user_name
+
+# List of slurmdbd job fields selected in slurmrestd API when retrieving a
+# unique job, all other fields are filtered out.
+#
+# Default value:
+# - association
+# - comment
+# - derived_exit_code
+# - exit_code
+# - group
+# - name
+# - nodes
+# - partition
+# - priority
+# - qos
+# - script
+# - state
+# - steps
+# - submit_line
+# - time
+# - tres
+# - used_gres
+# - user
+# - wckey
+# - working_directory
+acctjob=
+  association
+  comment
+  derived_exit_code
+  exit_code
+  group
+  name
+  nodes
+  partition
+  priority
+  qos
+  script
+  state
+  steps
+  submit_line
+  time
+  tres
+  used_gres
+  user
+  wckey
+  working_directory
+
+# List of slurmctld job fields selected in slurmrestd API when retrieving a
+# unique job, all other fields are filtered out.
+#
+# Default value:
+# - accrue_time
+# - batch_flag
+# - command
+# - cpus
+# - current_working_directory
+# - exclusive
+# - gres_detail
+# - last_sched_evaluation
+# - node_count
+# - partition
+# - sockets_per_node
+# - standard_error
+# - standard_input
+# - standard_output
+# - tasks
+# - tres_per_job
+# - tres_per_node
+# - tres_per_socket
+# - tres_per_task
+# - tres_req_str
+ctldjob=
+  accrue_time
+  batch_flag
+  command
+  cpus
+  current_working_directory
+  exclusive
+  gres_detail
+  last_sched_evaluation
+  node_count
+  partition
+  sockets_per_node
+  standard_error
+  standard_input
+  standard_output
+  tasks
+  tres_per_job
+  tres_per_node
+  tres_per_socket
+  tres_per_task
+  tres_req_str
+
+# List of nodes fields selected in slurmrestd API, all other fields are
+# filtered out.
+#
+# Default value:
+# - name
+# - cpus
+# - sockets
+# - cores
+# - gres
+# - gres_used
+# - real_memory
+# - state
+# - reason
+# - partitions
+# - alloc_cpus
+# - alloc_idle_cpus
+nodes=
+  name
+  cpus
+  sockets
+  cores
+  gres
+  gres_used
+  real_memory
+  state
+  reason
+  partitions
+  alloc_cpus
+  alloc_idle_cpus
+
+# List of invidual node fields selected in slurmrestd API, all other fields
+# are filtered out.
+#
+# Default value:
+# - name
+# - architecture
+# - operating_system
+# - boot_time
+# - last_busy
+# - cpus
+# - sockets
+# - cores
+# - threads
+# - real_memory
+# - gres
+# - gres_used
+# - state
+# - reason
+# - partitions
+# - alloc_cpus
+# - alloc_idle_cpus
+# - alloc_memory
+node=
+  name
+  architecture
+  operating_system
+  boot_time
+  last_busy
+  cpus
+  sockets
+  cores
+  threads
+  real_memory
+  gres
+  gres_used
+  state
+  reason
+  partitions
+  alloc_cpus
+  alloc_idle_cpus
+  alloc_memory
+
+# List of partitions fields selected in slurmrestd API, all other fields are
+# filtered out.
+#
+# Default value:
+# - name
+# - node_sets
+partitions=
+  name
+  node_sets
+
+# List of qos fields selected in slurmrestd API, all other fields are
+# filtered out.
+#
+# Default value:
+# - name
+# - description
+# - priority
+# - flags
+# - limits
+qos=
+  name
+  description
+  priority
+  flags
+  limits
+
+# List of reservations fields selected in slurmrestd API, all other fields
+# are filtered out.
+#
+# Default value:
+# - name
+# - users
+# - accounts
+# - node_list
+# - node_count
+# - start_time
+# - end_time
+# - flags
+reservations=
+  name
+  users
+  accounts
+  node_list
+  node_count
+  start_time
+  end_time
+  flags
+
+# List of accounts fields selected in slurmrestd API, all other fields are
+# filtered out.
+#
+# Default value:
+# - name
+accounts=
+  name
+
+[policy]
+
+# Path to RBAC policy definition file with available actions
+#
+# Default value: /usr/share/slurm-web/conf/policy.yml
+definition=/usr/share/slurm-web/conf/policy.yml
+
+# Path to default vendor RBAC policy definition file with roles and
+# permitted actions
+#
+# Default value: /usr/share/slurm-web/conf/policy.ini
+vendor_roles=/usr/share/slurm-web/conf/policy.ini
+
+# Path to site RBAC policy definition file with roles and permitted actions
+#
+# Default value: /etc/slurm-web/policy.ini
+roles=/etc/slurm-web/policy.ini
+
+[jwt]
+
+# Path to private key for Slurm-web internal JWT signature.
+#
+# Default value: /var/lib/slurm-web/jwt.key
+key=/var/lib/slurm-web/jwt.key
+
+# Cryptographic algorithm used to sign JWT
+#
+# Possible values:
+# - HS256
+# - HS384
+# - HS512
+# - ES256
+# - ES256K
+# - ES384
+# - ES512
+# - RS256
+# - RS384
+# - RS512
+# - PS256
+# - PS384
+# - PS512
+# - EdDSA
+#
+# Default value: HS256
+algorithm=HS256
+
+# Audience defined in generated JWT and expected in JWT provided by clients
+#
+# Default value: slurm-web
+audience=slurm-web
+
+[racksdb]
+
+# Control if RacksDB integration feature for advanced visualization of
+# resources is enabled.
+#
+# Default value: yes
+enabled=no
+
+# Path to RacksDB database
+#
+# Default value: /var/lib/racksdb
+db=/var/lib/racksdb
+
+# Path to RacksDB database schema
+#
+# Default value: /usr/share/racksdb/schemas/racksdb.yml
+schema=/usr/share/racksdb/schemas/racksdb.yml
+
+# Path to site-specific RacksDB schema extensions
+#
+# Default value: /etc/racksdb/extensions.yml
+extensions=/etc/racksdb/extensions.yml
+
+# Path to RacksDB database schema
+#
+# Default value: /usr/share/racksdb/schemas/drawings.yml
+drawings_schema=/usr/share/racksdb/schemas/drawings.yml
+
+# Name of the infrastructure for the cluster in RacksDB. By default, the
+# cluster name is used.
+#infrastructure=atlas
+infrastructure=mercury #racksdb
+
+# List of tags applied to compute nodes in RacksDB database
+#
+# Default value:
+# - compute
+tags=
+  compute
+
+[cache]
+
+# Determine if caching is enabled
+enabled=yes
+
+# Hostname of Redis cache server
+#
+# Default value: localhost
+host=<REDIS IP>
+
+# TCP port of Redis cache server
+#
+# Default value: 6379
+port=6379
+
+# Password to connect to protected Redis server. When this parameter is
+# not defined, Redis server is accessed without password.
+password=<REDIS PASSWD>
+
+# Expiration delay in seconds for Slurm version in cache
+#
+# Default value: 1800
+version=1800
+
+# Expiration delay in seconds for jobs in cache
+#
+# Default value: 30
+jobs=30
+
+# Expiration delay in seconds for invidual jobs in cache
+#
+# Default value: 10
+job=10
+
+# Expiration delay in seconds for nodes in cache
+#
+# Default value: 30
+nodes=30
+
+# Expiration delay in seconds for node in cache
+#
+# Default value: 10
+node=10
+
+# Expiration delay in seconds for partitions in cache
+#
+# Default value: 60
+partitions=60
+
+# Expiration delay in seconds for QOS in cache
+#
+# Default value: 60
+qos=60
+
+# Expiration delay in seconds for reservations in cache
+#
+# Default value: 60
+reservations=60
+
+# Expiration delay in seconds for accounts in cache
+#
+# Default value: 60
+accounts=60
+
+[metrics]
+
+# Determine if metrics feature and integration with Prometheus (or
+# compatible) is enabled.
+enabled=no
+
+# Restricted list of IP networks permitted to request metrics.
+#
+# Default value:
+# - 127.0.0.0/24
+# - ::1/128
+restrict=
+  127.0.0.0/24
+  ::1/128
+
+# URL of Prometheus server (or compatible) to requests metrics with PromQL.
+#
+# Default value: http://localhost:9090
+host=http://localhost:9090
+
+# Name of Prometheus job which scrapes Slurm-web metrics.
+#
+# Default value: slurm
+job=slurm
+EOF
+```
+### 配置slurm-web-gateway
+```shell
+cat > /etc/slurm-web/gateway.ini << EOF
+# This file is an example configuration file for Slurm-web gateway
+#
+# Please DO NOT USE THIS FILE as a basis for your custom
+# /etc/slurm-web/gateway.ini.
+
+[service]
+
+# Address of network interfaces to bind native service for incoming
+# connections. Special value `0.0.0.0` means all network interfaces.
+#
+# Default value: localhost
+interface=10.84.3.164
+
+# TCP port to listen for incoming connections.
+#
+# Default value: 5011
+port=5011
+
+# When true, Cross-Origin Resource Sharing (CORS) headers are enabled.
+cors=no
+
+# Enable debug mode
+debug=no
+
+# List of log flags to enable. Special value `ALL` enables all log flags.
+#
+# Possible values:
+# - slurmweb
+# - rfl
+# - werkzeug
+# - urllib3
+# - racksdb
+# - ALL
+#
+# Default value:
+# - ALL
+log_flags=
+  ALL
+
+# List of debug flags to enable. Special value `ALL` enables all debug
+# flags.
+#
+# Possible values:
+# - slurmweb
+# - rfl
+# - werkzeug
+# - urllib3
+# - racksdb
+# - ALL
+#
+# Default value:
+# - slurmweb
+debug_flags=
+  slurmweb
+
+[ui]
+
+# Public URL to access the gateway component
+host=http://10.84.3.164:5011
+
+# Serve frontend application with gateway
+#
+# Default value: yes
+enabled=yes
+
+# Path to Slurm-web frontend application
+#
+# Default value: /usr/share/slurm-web/frontend
+path=/usr/share/slurm-web/frontend
+
+# Path HTML templates folder.
+#
+# Default value: /usr/share/slurm-web/templates
+templates=/usr/share/slurm-web/templates
+
+# Path to service message HTML template relative to the templates folder.
+#
+# Default value: message.html.j2
+message_template=message.html.j2
+
+# Path to service message presented to users below the login form. Slurm-web
+# loads the file if it exists. However, it does not fail if file is not
+# found, it is skipped silently. The content must be formatted in markdown.
+#
+# Default value: /etc/slurm-web/messages/login.md
+message_login=/etc/slurm-web/messages/login.md
+
+# Control if users can see the list of denied clusters, ie. clusters on
+# which they do not have any permission. When false, these clusters are
+# visible and marked as denied for these users. When true, these clusters
+# are hidden to these users.
+hide_denied=no
+
+# Enable racks rows labels in RacksDB infrastructure graphical
+# representations.
+racksdb_rows_labels=no
+
+# Enable racks labels in RacksDB infrastructure graphical representations.
+racksdb_racks_labels=no
+
+[agents]
+
+# List of Slurm-web agents URL
+#
+# This parameter is required.
+url=
+  http://10.84.3.164:5012
+
+# Minimal support version of Slurm-web agent API
+#
+# CAUTION: You SHOULD NOT change this parameter unless you really know what
+# you are doing. This parameter is more intented for Slurm-web developers
+# rather than end users. Slurm-web is officially tested and validated with
+# the default value only.
+#
+# Default value: 5.1.0
+version=5.1.0
+
+# Minimal supported version of RacksDB API
+#
+# CAUTION: You SHOULD NOT change this parameter unless you really know what
+# you are doing. This parameter is more intented for Slurm-web developers
+# rather than end users. Slurm-web is officially tested and validated with
+# the default value only.
+#
+# Default value: 0.5.0
+racksdb_version=0.5.0
+
+[authentication]
+
+# Determine if authentication is enabled
+enabled=no
+
+# Authentification method
+#
+# Possible values:
+# - ldap
+#
+# Default value: ldap
+method=ldap
+
+[ldap]
+
+# URI to connect to LDAP server
+uri=ldap://localhost
+
+# Path to CA certificate used to validate signature of LDAP server
+# certificate when using ldaps or STARTTLS protocols. When not defined, the
+# default system CA certificates is used.
+cacert=/path/to/certificate.pem
+
+# Use STARTTLS protocol to negociate TLS connection with LDAP server
+starttls=no
+
+# Base DN for users entries
+user_base=ou=people,dc=example,dc=org
+
+# Base DN for group entries
+group_base=ou=group,dc=example,dc=org
+
+# Class of user entries
+#
+# Default value: posixAccount
+user_class=posixAccount
+
+# User entry attribute for user name
+#
+# Default value: uid
+user_name_attribute=uid
+
+# User entry attribute for full name
+#
+# Default value: cn
+user_fullname_attribute=cn
+
+# User entry attribute for primary group ID
+#
+# Default value: gidNumber
+user_primary_group_attribute=gidNumber
+
+# Group entry attribute for name
+#
+# Default value: cn
+group_name_attribute=cn
+
+# List of LDAP object classes for groups
+#
+# Default value:
+# - posixGroup
+# - groupOfNames
+group_object_classes=
+  posixGroup
+  groupOfNames
+
+# Lookup user DN in the scope of user base subtree. If disable, LDAP
+# directory is not requested to search for the user in the subtree before
+# authentication, and the user DN are considered to be in the form of
+# `<user_name_attribute>=$login,<user_base>` (ex:
+# `uid=$login,ou=people,dc=example,dc=org`). This notably implies all
+# users entries to be at the first level under the user base in the tree.
+#
+# Default value: yes
+lookup_user_dn=yes
+
+# DN used to bind to the LDAP server. When this parameter is not defined,
+# access to LDAP directory is performed anonymously.
+bind_dn=cn=system,ou=people,dc=example,dc=org
+
+# Password of bind DN. This parameter is required when `bind_dn` is
+# defined.
+bind_password=SECR3T
+
+# As an alternative to `bind_password` parameter, path to a separate file to
+# read bind DN password from. When this parameter is defined, the
+# `bind_password` parameter is ignored.
+bind_password_file=/etc/slurm-web/ldap_password
+
+# After successful user authentication, when this parameter is set to _yes_,
+# Slurm-web retrieves user information and groups from LDAP directory with
+# authenticated user permissions. When this parameter is set to _no_
+# Slurm-web searches this information with service `bind_dn` and
+# `bind_password` when defined or performs the operation anonymously. When
+# this parameter is omitted in configuration (default), Slurm-web uses
+# service `bind_dn` and `bind_password` when defined or authenticated user
+# permissions as a fallback.
+lookup_as_user=no
+
+# List of users groups allowed to connect. When this parameter is not
+# defined, all users in LDAP directory are authorized to sign in.
+restricted_groups=
+  admins
+  biology
+
+[jwt]
+
+# Path to private key for JWT signature
+#
+# Default value: /var/lib/slurm-web/jwt.key
+key=/var/lib/slurm-web/jwt.key
+
+# JWT validity duration in days
+#
+# Default value: 1
+duration=1
+
+# Cryptographic algorithm used to sign JWT
+#
+# Possible values:
+# - HS256
+# - HS384
+# - HS512
+# - ES256
+# - ES256K
+# - ES384
+# - ES512
+# - RS256
+# - RS384
+# - RS512
+# - PS256
+# - PS384
+# - PS512
+# - EdDSA
+#
+# Default value: HS256
+algorithm=HS256
+
+# Audience defined in generated JWT and expected in JWT provided by clients
+#
+# Default value: slurm-web
+audience=slurm-web
+EOF
+```
+### 生成Slurm-web JWT 签名密钥
+```shell
+/usr/libexec/slurm-web/slurm-web-gen-jwt-key
+```
+### 复制Slurm JWT 签名密钥
+```shell
+scp <控制节点IP>:/var/spool/slurm/statesave/jwt_hs256.key /var/lib/slurm-web/slurmrestd.key
+chown slurm-web:slurm-web /var/lib/slurm-web/slurmrestd.key
+chmod 400 /var/lib/slurm-web/slurmrestd.key
+```
+### 测试Slurm-web能否连接集群
+```shell
+root@server5:~# /usr/libexec/slurm-web/slurm-web-connect-check
+INFO ⸬ slurmrestd URI: http://server7:6820, authentication: jwt, JWT mode: auto
+INFO ⸬ Running slurm-web-connect-check
+INFO ⸬ Generating new JWT for authentication to slurmrestd
+✅ connection successful (slurm: 25.05.3, cluster: cool)
+```
+### 启动Slurm-web
+```shell
+# systemctl enable --now slurm-web-agent.service
+# systemctl enable --now slurm-web-gateway.service
+```
+访问Slurm-web
+使用浏览器访问网关http ://<slurm-web-gateway-interface IP>:5011
+默认没有密码，打开就能访问
+![Slurm-web-dash.png.png](../image/Slurm-web-dash.png)
+## 集群增减节点
+### 增节点
+控制节点配置 (slurm.conf)
+举例：现有一套集群三个节点server[2-4]，新增一个server5
+新增节点必须出现在控制节点的 slurm.conf 里
+server5未加入之前的配置
+```shell
+.....................................省略...................................
+PartitionName=cpu Nodes=server[2-4] Default=no MaxTime=INFINITE State=UP
+PartitionName=memory Nodes=server[2-4] Default=yes MaxTime=INFINITE State=UP
+PartitionName=gpu Nodes=server[2-3] Default=no MaxTime=INFINITE State=UP
+NodeName=server2 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server3 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server4 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988
+```
+server5加入之后的配置
+```shell
+.....................................省略...................................
+PartitionName=cpu Nodes=server[2-5] Default=no MaxTime=INFINITE State=UP
+PartitionName=memory Nodes=server[2-5] Default=yes MaxTime=INFINITE State=UP
+PartitionName=gpu Nodes=server[2-3] Default=no MaxTime=INFINITE State=UP
+NodeName=server2 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server3 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server4 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988
+NodeName=server5 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988
+```
+#### 修改新节点slurmd的service文件
+```shell
+cat > /lib/systemd/system/slurmd.service << 
+[Unit]
+Description=Slurm node daemon
+After=munge.service network-online.target remote-fs.target sssd.service
+Wants=network-online.target
+#ConditionPathExists=/etc/slurm/slurm.conf
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/sysconfig/slurmd
+EnvironmentFile=-/etc/default/slurmd
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=0755
+ExecStart=/usr/sbin/slurmd --systemd $SLURMD_OPTIONS --conf-server server2:6817
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+LimitNOFILE=131072
+LimitMEMLOCK=infinity
+LimitSTACK=infinity
+Delegate=yes
+TasksMax=infinity
+
+# Uncomment the following lines to disable logging through journald.
+# NOTE: It may be preferable to set these through an override file instead.
+#StandardOutput=null
+#StandardError=null
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+新增--conf-server server2:6817 让计算节点知道去哪里去获取配置信息
+#### 重新加载配置 使注册生效
+```shell
+scontrol reconfigure
+```
+#### 验证是否生效
+```shell
+root@server2:~# scontrol show nodes
+NodeName=server2 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server2 NodeHostName=server2 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=490309 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-16T10:50:27 SlurmdStartTime=2025-09-23T10:08:51
+   LastBusyTime=2025-09-23T10:08:51 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server3 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server3 NodeHostName=server3 Version=25.05.3
+   OS=Linux 5.15.0-151-generic #161-Ubuntu SMP Tue Jul 22 14:25:40 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=508844 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-08T07:51:38 SlurmdStartTime=2025-09-23T10:08:51
+   LastBusyTime=2025-09-23T10:08:51 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server4 Arch=x86_64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=8 CPUTot=8 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=server4 NodeHostName=server4 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=15988 AllocMem=0 FreeMem=14079 Sockets=8 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory 
+   BootTime=2025-09-17T11:19:04 SlurmdStartTime=2025-09-23T10:08:51
+   LastBusyTime=2025-09-23T10:08:51 ResumeAfterTime=None
+   CfgTRES=cpu=8,mem=15988M,billing=8
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server5 Arch=x86_64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=8 CPUTot=8 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=server5 NodeHostName=server5 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=15988 AllocMem=0 FreeMem=14054 Sockets=8 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory 
+   BootTime=2025-09-17T11:19:08 SlurmdStartTime=2025-09-23T10:08:51
+   LastBusyTime=2025-09-23T10:08:51 ResumeAfterTime=None
+   CfgTRES=cpu=8,mem=15988M,billing=8
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+```
+### 减节点(减server5)
+#### 设置节点不可调度
+```shell
+scontrol update NodeName=server5 State=DRAIN Reason="维护中"
+```
+#### 验证是否生效
+```shell
+root@server2:~# scontrol show nodes
+NodeName=server2 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server2 NodeHostName=server2 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=490327 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-16T10:50:28 SlurmdStartTime=2025-09-19T15:58:06
+   LastBusyTime=2025-09-23T08:48:32 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server3 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.01
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server3 NodeHostName=server3 Version=25.05.3
+   OS=Linux 5.15.0-151-generic #161-Ubuntu SMP Tue Jul 22 14:25:40 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=508848 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-08T07:51:39 SlurmdStartTime=2025-09-19T15:58:06
+   LastBusyTime=2025-09-23T08:48:32 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server4 Arch=x86_64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=8 CPUTot=8 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=server4 NodeHostName=server4 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=15988 AllocMem=0 FreeMem=14076 Sockets=8 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory 
+   BootTime=2025-09-17T11:19:05 SlurmdStartTime=2025-09-19T15:58:06
+   LastBusyTime=2025-09-23T08:48:32 ResumeAfterTime=None
+   CfgTRES=cpu=8,mem=15988M,billing=8
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server5 Arch=x86_64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=8 CPUTot=8 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=server5 NodeHostName=server5 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=15988 AllocMem=0 FreeMem=14055 Sockets=8 Boards=1
+   State=IDLE+DRAIN ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory 
+   BootTime=2025-09-17T11:19:09 SlurmdStartTime=2025-09-19T15:58:06
+   LastBusyTime=2025-09-23T08:48:32 ResumeAfterTime=None
+   CfgTRES=cpu=8,mem=15988M,billing=8
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+   Reason=维护中 [root@2025-09-23T09:46:15]
+root@server2:~# sinfo
+PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+cpu          up   infinite      1  drain server5
+cpu          up   infinite      3   idle server[2-4]
+memory*      up   infinite      1  drain server5
+memory*      up   infinite      3   idle server[2-4]
+gpu          up   infinite      2   idle server[2-3]
+```
+> 恢复节点可调度时可使用   scontrol update NodeName=server5 State=RESUME
+#### 编辑控制节点的 /etc/slurm/slurm.conf，删除或注释掉该节点。
+```shell
+.....................................省略...................................
+PartitionName=cpu Nodes=server[2-4] Default=no MaxTime=INFINITE State=UP #默认是Nodes=server[2-5]
+PartitionName=memory Nodes=server[2-4] Default=yes MaxTime=INFINITE State=UP #默认是Nodes=server[2-5]
+PartitionName=gpu Nodes=server[2-3] Default=no MaxTime=INFINITE State=UP
+NodeName=server2 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server3 CPUs=96 Boards=1 SocketsPerBoard=2 CoresPerSocket=24 ThreadsPerCore=2 RealMemory=515711 Gres=gpu:nvidia_l40s:2
+NodeName=server4 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988
+#NodeName=server5 CPUs=8 Boards=1 SocketsPerBoard=8 CoresPerSocket=1 ThreadsPerCore=1 RealMemory=15988
+```
+#### 重新加载配置 使改动生效
+```shell
+scontrol reconfigure
+```
+#### 验证节点是否已删除
+```shell
+root@server2:~# sinfo
+PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+cpu          up   infinite      3   idle server[2-4]
+memory*      up   infinite      3   idle server[2-4]
+gpu          up   infinite      2   idle server[2-3]
+root@server2:~# scontrol show nodes
+NodeName=server2 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server2 NodeHostName=server2 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=490321 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-16T10:50:27 SlurmdStartTime=2025-09-23T09:51:02
+   LastBusyTime=2025-09-23T09:51:02 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server3 Arch=x86_64 CoresPerSocket=24 
+   CPUAlloc=0 CPUEfctv=96 CPUTot=96 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=gpu:nvidia_l40s:2
+   NodeAddr=server3 NodeHostName=server3 Version=25.05.3
+   OS=Linux 5.15.0-151-generic #161-Ubuntu SMP Tue Jul 22 14:25:40 UTC 2025 
+   RealMemory=515711 AllocMem=0 FreeMem=508847 Sockets=2 Boards=1
+   State=IDLE ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory,gpu 
+   BootTime=2025-09-08T07:51:38 SlurmdStartTime=2025-09-23T09:51:02
+   LastBusyTime=2025-09-23T09:51:02 ResumeAfterTime=None
+   CfgTRES=cpu=96,mem=515711M,billing=96
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
+
+NodeName=server4 Arch=x86_64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=8 CPUTot=8 CPULoad=0.00
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=server4 NodeHostName=server4 Version=25.05.3
+   OS=Linux 5.15.0-153-generic #163-Ubuntu SMP Thu Aug 7 16:37:18 UTC 2025 
+   RealMemory=15988 AllocMem=0 FreeMem=14080 Sockets=8 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=cpu,memory 
+   BootTime=2025-09-17T11:19:05 SlurmdStartTime=2025-09-23T09:51:02
+   LastBusyTime=2025-09-23T09:51:02 ResumeAfterTime=None
+   CfgTRES=cpu=8,mem=15988M,billing=8
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
 ```

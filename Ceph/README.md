@@ -21,6 +21,9 @@ ceph fs subvolume ls cephfs
 # 查看卷组中的子卷
 ceph fs subvolume ls <cephfs name> <子卷 name>
 
+#查看存储池
+ceph osd pool ls
+
 # 查看已创建image
 rbd -p <pool name> ls
 

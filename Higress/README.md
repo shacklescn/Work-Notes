@@ -73,11 +73,14 @@ Helm 是一个用于自动化管理和发布 Kubernetes 软件的包管理系统
 Higress 网关由控制面组件 higress-controller 和数据面组件 higress-gateway 组成。higress-gateway负责承载数据流量，higress-controller 负责管理配置下发。
 ## 1. 安装higress
 ```shell
+添加higress的chart库
+helm repo add higress.io https://higress.io/helm-charts
+
 # 只启用AI网关功能
-helm install higress -n higress-system higress.io/higress --create-namespace --render-subchart-notes --set global.enableRedis=true
+helm install higress -n higress-system higress.io/higress --create-namespace --render-subchart-notes --set global.local=true
 
 # 启用AI网关功能和内置监控套件
-helm install higress -n higress-system higress.io/higress --create-namespace --render-subchart-notes --set global.enableRedis=true --set global.o11y.enabled=true
+helm install higress -n higress-system higress.io/higress --create-namespace --render-subchart-notes --set global.local=true --set global.o11y.enabled=true
 ```
 注意：如果k8s集群中已经存在prometheus-operator或kube-prometheus不能启用内置监控套件，他们是互斥的，只能存在其一，不启用内置监控套件时可以对接外部监控可以是prometheus-operator或kube-prometheus
 ## 2. 常用安装参数

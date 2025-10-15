@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos-headless
+  labels:
+    app: nacos
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8848
+      targetPort: 8848
+    - name: grpc-9848
+      protocol: TCP
+      port: 9848
+      targetPort: 9848
+    - name: grpc-9849
+      protocol: TCP
+      port: 9849
+      targetPort: 9849
+  selector:
+    app: nacos
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  labels:
+    app: nacos
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8848
+      targetPort: 8848
+    - name: grpc-9848
+      protocol: TCP
+      port: 9848
+      targetPort: 9848
+    - name: grpc-9849
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: nacos
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nacos
+  labels:
+    app: nacos
+spec:
+  serviceName: nacos-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      securityContext:
+        fsGroup: 0
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:v3.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODE
+              value: "standalone"
+            - name: NACOS_AUTH_ENABLE
+              value: "false"
+            - name: NACOS_AUTH_TOKEN
+              value: "ZkVqU3h1VjVQYlRzQ1dLZzlsN2p2QldJcW1DdExqTFA="
+            - name: NACOS_AUTH_IDENTITY_KEY
+              value: "serverIdentity"
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              value: "security"
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: "mysql"
+            - name: MYSQL_SERVICE_HOST
+              value: "mysql.nacos-mcp.svc.cluster.local"
+            - name: MYSQL_SERVICE_PORT
+              value: "3306"
+            - name: MYSQL_SERVICE_DB_NAME
+              value: "nacos"
+            - name: MYSQL_SERVICE_USER
+              value: "nacos"
+            - name: MYSQL_SERVICE_PASSWORD
+              value: "SecA@2025..."
+          ports:
+            - containerPort: 8848
+            - containerPort: 9848
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /v3/console/server/state
+              port: 8080
+            initialDelaySeconds: 25
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /v3/console/server/state
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: nacos-data
+              mountPath: /home/nacos/data
+              subPath: data
+  volumeClaimTemplates:
+    - metadata:
+        name: nacos-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: csi-rbd-sc
+        resources:
+          requests:
+            storage: 50Gi

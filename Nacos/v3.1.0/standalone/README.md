@@ -81,40 +81,24 @@ kubectl apply -f ./Nacos/Nacos.yaml -n nacos-mcp
 ```
 YAML 内容：
 - 镜像：nacos/nacos-server:v3.1.0
-- 运行模式：standalone
+- 运行模式：cluster
 - 启用 MySQL 外部数据源
 - 存储卷：50Gi
-- 含健康检查（liveness/readiness）
 ### 2. 查看启动日志
 ```shell
 kubectl logs -f statefulset/nacos -n nacos-mcp
 ```
 输出示例：
 ```shell
-2025-10-15 10:21:07,230 INFO Nacos Server API is starting...
-
-2025-10-15 10:21:07,237 INFO Tomcat initialized with port 8848 (http)
-
-2025-10-15 10:21:07,335 INFO Root WebApplicationContext: initialization completed in 2103 ms
-
-2025-10-15 10:21:07,740 INFO Adding welcome page: class path resource [static/index.html]
-
-2025-10-15 10:21:08,306 INFO Nacos Server API is starting...
-
-2025-10-15 10:21:08,340 INFO Exposing 1 endpoint beneath base path '/actuator'
-
-2025-10-15 10:21:08,424 INFO Tomcat started on port 8848 (http) with context path '/nacos'
-
-2025-10-15 10:21:08,432 INFO Nacos Server API started successfully in 3296 ms
 
 
          ,--.
        ,--.'|
-   ,--,:  : |                                           Nacos Console 3.1.0
-,`--.'`|  ' :                       ,---.               Running in stand alone mode, All function modules
-|   :  :  | |                      '   ,'\   .--.--.    Port: 8080
+   ,--,:  : |                                           Nacos Server 3.1.0
+,`--.'`|  ' :                       ,---.               Running in cluster mode, All function modules
+|   :  :  | |                      '   ,'\   .--.--.
 :   |   \ | :  ,--.--.     ,---.  /   /   | /  /    '   Pid: 1
-|   : '  '; | /       \   /     \.   ; ,. :|  :  /`./   Console: http://10.233.105.16:8080/index.html
+|   : '  '; | /       \   /     \.   ; ,. :|  :  /`./
 '   ' ;.    ;.--.  .-. | /    / ''   | |: :|  :  ;_
 |   | | \   | \__\/: . ..    ' / '   | .; : \  \    `.      https://nacos.io
 '   : |  ; .' ," .--.; |'   ; :__|   :    |  `----.   \
@@ -123,25 +107,57 @@ kubectl logs -f statefulset/nacos -n nacos-mcp
 ;   |.'     |  ,     .-./\   \  /            `--'---'
 '---'        `--`---'     `----'
 
-2025-10-15 10:21:09,146 WARN Bean 'nacosConsoleBeanPostProcessorConfiguration' of type [com.alibaba.nacos.console.config.NacosConsoleBeanPostProcessorConfiguration$$SpringCGLIB$$0] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying). The currently created BeanPostProcessor [nacosDuplicateSpringBeanPostProcessor] is declared through a non-static factory method on that class; consider declaring it as static instead.
+2025-10-21 10:51:50,460 INFO The server IP list of Nacos is [nacos-0.nacos-headless.nacos-mcp.svc.cluster.local:8848, nacos-1.nacos-headless.nacos-mcp.svc.cluster.local:8848, nacos-2.nacos-headless.nacos-mcp.svc.cluster.local:8848]
 
-2025-10-15 10:21:09,230 INFO Tomcat initialized with port 8080 (http)
+2025-10-21 10:51:51,460 INFO Nacos Server is starting...
 
-2025-10-15 10:21:09,232 INFO Root WebApplicationContext: initialization completed in 705 ms
+2025-10-21 10:51:52,461 INFO Nacos Server is starting...
 
-2025-10-15 10:21:09,421 INFO Adding welcome page: class path resource [static/index.html]
+2025-10-21 10:51:53,462 INFO Nacos Server is starting...
 
-2025-10-15 10:21:09,525 INFO Nacos Console is starting...
+2025-10-21 10:51:54,463 INFO Nacos Server is starting...
 
-2025-10-15 10:21:09,642 INFO Exposing 1 endpoint beneath base path '/actuator'
+2025-10-21 10:51:55,463 INFO Nacos Server is starting...
 
-2025-10-15 10:21:09,719 INFO Tomcat started on port 8080 (http) with context path '/'
+2025-10-21 10:51:55,865 INFO Nacos started successfully in cluster mode with external storage in 6032 ms
 
-2025-10-15 10:21:09,726 INFO Nacos Console started successfully in 1287 ms
 
-2025-10-15 10:21:20,693 INFO Initializing Servlet 'dispatcherServlet'
+         ,--.
+       ,--.'|
+   ,--,:  : |                                           Nacos Server API 3.1.0
+,`--.'`|  ' :                       ,---.               Running in cluster mode, All function modules
+|   :  :  | |                      '   ,'\   .--.--.    Port: 8848
+:   |   \ | :  ,--.--.     ,---.  /   /   | /  /    '   Pid: 1
+|   : '  '; | /       \   /     \.   ; ,. :|  :  /`./
+'   ' ;.    ;.--.  .-. | /    / ''   | |: :|  :  ;_
+|   | | \   | \__\/: . ..    ' / '   | .; : \  \    `.      https://nacos.io
+'   : |  ; .' ," .--.; |'   ; :__|   :    |  `----.   \
+|   | '`--'  /  /  ,.  |'   | '.'|\   \  /  /  /`--'  /
+'   : |     ;  :   .'   \   :    : `----'  '--'.     /
+;   |.'     |  ,     .-./\   \  /            `--'---'
+'---'        `--`---'     `----'
 
-2025-10-15 10:21:20,695 INFO Completed initialization in 2 ms
+2025-10-21 10:51:56,913 INFO Nacos Server API is starting...
+
+2025-10-21 10:51:57,243 INFO Nacos Server API started successfully in 1361 ms
+
+
+         ,--.
+       ,--.'|
+   ,--,:  : |                                           Nacos Console 3.1.0
+,`--.'`|  ' :                       ,---.               Running in cluster mode, All function modules
+|   :  :  | |                      '   ,'\   .--.--.    Port: 8080
+:   |   \ | :  ,--.--.     ,---.  /   /   | /  /    '   Pid: 1
+|   : '  '; | /       \   /     \.   ; ,. :|  :  /`./   Console: http://nacos-0.nacos-headless.nacos-mcp.svc.cluster.local:8080/index.html
+'   ' ;.    ;.--.  .-. | /    / ''   | |: :|  :  ;_
+|   | | \   | \__\/: . ..    ' / '   | .; : \  \    `.      https://nacos.io
+'   : |  ; .' ," .--.; |'   ; :__|   :    |  `----.   \
+|   | '`--'  /  /  ,.  |'   | '.'|\   \  /  /  /`--'  /
+'   : |     ;  :   .'   \   :    : `----'  '--'.     /
+;   |.'     |  ,     .-./\   \  /            `--'---'
+'---'        `--`---'     `----'
+
+2025-10-21 10:51:57,667 INFO Nacos Console started successfully in 419 ms
 ```
 ### 3. 验证服务
 查看 Nacos 对外端口：
@@ -151,6 +167,7 @@ kubectl get svc nacos -n nacos-mcp
 输出示例：
 ```shell
 NAME    TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)                                        AGE
-nacos   NodePort   10.233.50.46   <none>        8848:31978/TCP,9848:31694/TCP,8080:30688/TCP   17h
+nacos   NodePort   10.233.50.46   <none>        8848:31978/TCP,8080:30688/TCP   17h
 ```
 访问控制台：http://<NODE_IP>:30688
+注册服务：http://<NODE_IP>:31978

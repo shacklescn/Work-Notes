@@ -814,3 +814,58 @@ Oct 10 09:39:08 server7 slurmrestd[64591]: debug3: _call_handler: [server7:6820(
 - slurmrestd 将其序列化为 JSON 并返回 HTTP 200 OK 响应。
 此时 curl 会收到 JSON 格式的分区列表（如 debug, main, gpu 等）。
 ![ID.png](image/ID.png)
+
+## 用户使用
+### 1. 用户账号开通
+在控制节点，登录节点和计算节点创建用户并设置登录密码
+```shell
+useradd -u <UID> -m -d /home/<USERNAME> -s /bin/bash <USERNAME>
+
+passwd <USERNAME>
+New password: #输入密码
+Retype new password: #在输入一次确认密码
+
+#重载配置文件，刷新配置
+sudo scontrol reconfigure
+```
+### 2. 用户资源配额
+#### 2.1. 启用Accounting Enforcement
+```shell
+# 修改/etc/slurm/slurm.conf
+AccountingStorageType=accounting_storage/slurmdbd
+AccountingStorageHost=server2
+AccountingStorageEnforce=limits,qos
+```
+#### 2.2. 重载配置
+```shell
+sudo scontrol reconfigure
+```
+#### 2.3.用户资源配额配置
+```shell
+# 创建research账户
+sacctmgr -i add account research Description="Research Team"
+
+# 添加qwx用户并关联research账户
+sacctmgr -i add user qwx DefaultAccount=research
+
+# 创建 QOS，一次性设置所有限制（包括单作业最大2核、用户总最大2核、最长30天、超限拒绝）
+sacctmgr -i add qos limited_resources \
+    MaxTRESPerJob=cpu=2 \
+    MaxTRESPerUser=cpu=2 \
+    MaxWall=30-00:00:00 \
+    Flags=DenyOnLimit
+
+# 将limited_resources QOS 分配给用户 qwx
+sacctmgr -i modify user qwx set QOS=limited_resources
+```
+#### 2.4. 验证配置是否生效
+```shell
+# 验证配置
+sacctmgr show user qwx withassoc where account=research
+sacctmgr show qos limited_resources format=Name,MaxTRESPerJob,MaxTRESPerUser,MaxWall,Flags
+
+# 验证是否能限制资源
+qwx@server6:/data/jobs$ sbatch --cpus-per-task=4 -p cpu -t 10 --wrap="echo hello"
+sbatch: error: QOSMaxCpuPerUserLimit
+sbatch: error: Batch job submission failed: Job violates accounting/QOS policy (job submit limit, user's size and/or time limits)
+```

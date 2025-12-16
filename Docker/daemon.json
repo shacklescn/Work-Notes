@@ -1,0 +1,14 @@
+{
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "5"
+    },
+    "storage-driver": "overlay2",
+    "storage-opts": [
+    ],
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "insecure-registries": [
+        "harbor.heywhale.com"
+    ]
+}

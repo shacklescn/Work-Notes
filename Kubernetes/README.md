@@ -4,7 +4,7 @@
 ```
 
 # FQA
-## 1、节点根目录可用空间不足
+## 1. 节点根目录可用空间不足
 ### 根因
 Docker overlay2 目录占用磁盘容量过多，导致磁盘空间告警。
 ### 解决方法
@@ -43,7 +43,7 @@ root@master3:~# kubectl get pods --all-namespaces -o json | jq -r '.items[] | se
 heat-storage/storage-back-64c4b95766-2x5kx
 ```
 
-## 2、Kubernetes v1.24+ 创建ServiceAccount未生成Secret问题
+## 2. Kubernetes v1.24+ 创建ServiceAccount未生成Secret问题
 ### 前提条件
 - Kubernetes的版本是v1.24+
 - 拥有一个可以正常使用的kubesphere
@@ -127,4 +127,71 @@ users:
 EOF
 
 echo "✅ kubeconfig 已生成：$(realpath ${OUTPUT_FILE})"
+```
+## 3. Kubernetes etcd 集群灾难恢复手册
+### 1. 问题诊断
+现象：kubectl 无法使用，报错找不到 API Server。
+根因：查看 API Server 日志发现无法连接 etcd（etcd server unavailable）。etcd 集群因多数派故障（Quorum lost）无法自愈，导致控制平面瘫痪。
+
+### 2. 紧急抢救：单节点恢复
+#### 1. 恢复etcd服务
+首先通过强行重置一个节点来恢复控制平面的基本能力。
+- 修改 gpu1 配置：编辑 /etc/kubernetes/manifests/etcd.yaml。
+- 注入强制参数：在 spec.containers.command 中添加 --force-new-cluster=true。
+- 重置集群属性：
+  - 将 --initial-cluster 暂时修改为仅包含 gpu1 自己。
+  - 保存后等待 etcd 重启。
+
+注意：此参数会丢弃所有旧成员信息，以当前数据强行创建名为 gpu1 的单节点集群。
+### 3. 核心手术：逐步重建三节点集群
+在 gpu1 运行正常后，禁止直接启动其他 etcd 节点，必须按照“先注册，再清理，后启动”的流程进行。
+#### 步骤 A：加入 cpu6 节点
+1. 注册成员（在 gpu1 容器内）：
+```shell
+# 进入etcd容器内部
+kubectl exec -it -n kube-system etcd-HOSTNAME -- sh
+
+
+# 定义变量简化命令
+export ETCDCTL_API=3
+alias ec="etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key"
+
+# 添加 之前的etcd 节点 例如cpu6
+ec member add cpu6 --peer-urls=https://192.168.129.15:2380
+```
+2. 清理数据（在 cpu6 宿主机）
+```shell
+rm -rf /var/lib/etcd/member
+```
+3. 对齐配置：
+- gpu1：删除 --force-new-cluster=true，设置 --initial-cluster-state=existing，并将 cpu6 加入 initial-cluster 列表。
+- cpu6：设置 --initial-cluster-state=existing，列表与 gpu1 保持一致。
+#### 步骤 B：加入 cpu5 节点
+1. 注册成员（在 gpu1 或 cpu6 容器内）：
+```shell
+# 进入etcd容器内部
+kubectl exec -it -n kube-system etcd-HOSTNAME -- sh
+
+# 定义变量简化命令
+export ETCDCTL_API=3
+alias ec="etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key"
+
+# 添加 之前的etcd 节点 例如cpu5
+ec member add cpu5 --peer-urls=https://192.168.129.14:2380
+```
+2. 清理数据（在 cpu5 宿主机）
+```shell
+rm -rf /var/lib/etcd/member
+```
+最终配置对齐： 将 gpu1、cpu6、cpu5 三个节点的 etcd.yaml 中 --initial-cluster 全部更新为完整的 3 节点列表： ```--initial-cluster=gpu1=https://192.168.129.16:2380,cpu6=https://192.168.129.15:2380,cpu5=https://192.168.129.14:2380```
+### 4. 恢复 API Server 高可用
+etcd 恢复后，需要确保 API Server 指向完整的 etcd 地址池。
+修改配置：编辑所有 master 节点的 /etc/kubernetes/manifests/kube-apiserver.yaml。
+更新地址：
+```shell
+- --etcd-servers=https://192.168.129.16:2379,https://192.168.129.15:2379,https://192.168.129.14:2379
+```
+验证：重启后检查 Pod 状态：
+```shell
+kubectl get pods -n kube-system | grep etcd
 ```

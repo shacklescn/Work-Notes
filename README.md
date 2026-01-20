@@ -196,3 +196,21 @@ No user sessions are running outdated binaries.
 
 No VM guests are running outdated hypervisor (qemu) binaries on this host
 ```
+## Ubuntu 24.04 搭建本地离线 APT 源
+```shell
+mkdir -p /data/offline_pkg && \
+apt-get install --download-only -y \
+    curl wget git net-tools lrzsz chrony vim \
+    htop atop iotop iftop nmon dstat sysstat \
+    openssh-client openssh-server rsync \
+    ca-certificates apt-transport-https \
+    tcpdump nmap telnet dpkg-dev \
+    nfs-common nfs-server \
+    kubelet=1.20.15-00 \
+    kubeadm=1.20.15-00 \
+    kubectl=1.20.15-00 \
+    docker.io && \
+cp /var/cache/apt/archives/*.deb /data/offline_pkg && \
+mkdir /data/offline_pkg/binary && \
+dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+```

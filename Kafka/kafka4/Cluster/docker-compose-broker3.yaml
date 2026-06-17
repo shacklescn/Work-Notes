@@ -1,6 +1,6 @@
 services:
   kafka3:
-    image: bitnami/kafka:4.0.0
+    image: soldevelo/kafka:4.0.0
     container_name: kafka3
     hostname: kafka3
     restart: unless-stopped
